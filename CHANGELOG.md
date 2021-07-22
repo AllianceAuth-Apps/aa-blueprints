@@ -9,6 +9,7 @@ and this project adheres to [PEP-440](https://www.python.org/dev/peps/pep-0440/)
 ### Added
 
 ### Changed
+* Updated `swagger.json`
 
 ### Fixed
 
