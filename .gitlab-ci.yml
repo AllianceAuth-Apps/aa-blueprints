@@ -49,22 +49,22 @@ test-36-django31:
     - tox -e py36-django31
     - bash <(curl -s https://codecov.io/bash)
 
-test-37-django31:
+test-37-django32:
   extends: .test-py37
   script:
-    - tox -e py37-django31
+    - tox -e py37-django32
     - bash <(curl -s https://codecov.io/bash)
 
-test-38-django31:
+test-38-django32:
   extends: .test-py38
   script:
-    - tox -e py38-django31
+    - tox -e py38-django32
     - bash <(curl -s https://codecov.io/bash)
 
-test-39-django31:
+test-39-django32:
   extends: .test-py39
   script:
-    - tox -e py39-django31
+    - tox -e py39-django32
     - bash <(curl -s https://codecov.io/bash)
 
 deploy-pypi:
