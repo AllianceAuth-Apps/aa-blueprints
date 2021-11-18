@@ -7,13 +7,15 @@ and this project adheres to [PEP-440](https://www.python.org/dev/peps/pep-0440/)
 
 ## [Unreleased]
 
+## [1.2.0] - 2021-11-18
+
 ### Added
 
 - Send Auth notifications for user requests to get blueprints copies (#7)
 
 ### Changed
-* Updated `swagger.json`
 
+- Updated `swagger.json`
 - Added CI tests for AA 2.9 / Django 3.2
 
 ### Fixed
