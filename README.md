@@ -13,8 +13,10 @@ This is an blueprints library app for [Alliance Auth](https://gitlab.com/allianc
 
 ### Features
 
-- Lists blueprints owned by corporation or alliance (configurable with permissions)
-- Collects requests for blueprint copies
+- Lists all blueprints owned by corporation or alliance (configurable with permissions)
+- Manage user requests for making copies of blueprints
+
+>**Hint**<br>Blueprints sends Auth notifications to inform users about blueprint requests. If you like to get those as direct messages on Discord please consider also installing [Discord Notify](https://gitlab.com/ErikKalkoken/aa-discordnotify).
 
 ## Screenshots
 

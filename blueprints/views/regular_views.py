@@ -1,10 +1,9 @@
-from datetime import datetime
-
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.http import JsonResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.html import format_html
+from django.utils.timezone import now
 from django.utils.translation import gettext_lazy
 from django.views.decorators.http import require_POST
 from esi.decorators import token_required
@@ -57,8 +56,7 @@ def index(request):
     ]
 )
 def add_corporate_blueprint_owner(request, token):
-    token_char = EveCharacter.objects.get(character_id=token.character_id)
-
+    token_char = get_object_or_404(EveCharacter, character_id=token.character_id)
     success = True
     try:
         owned_char = CharacterOwnership.objects.get(
@@ -93,7 +91,6 @@ def add_corporate_blueprint_owner(request, token):
             owner, _ = Owner.objects.update_or_create(
                 corporation=corporation, defaults={"character": owned_char}
             )
-
             owner.save()
 
         tasks.update_blueprints_for_owner.delay(owner_pk=owner.pk)
@@ -117,15 +114,13 @@ def add_corporate_blueprint_owner(request, token):
         )
         if BLUEPRINTS_ADMIN_NOTIFICATIONS_ENABLED:
             notify_admins(
-                message=gettext_lazy(
-                    "%(corporation)s was added as new corporate blueprint owner by %(user)s."
-                )
-                % {
-                    "corporation": owner.corporation.corporation_name,
-                    "user": request.user.username,
-                },
-                title="{}: blueprint owner added: {}".format(
-                    __title__, owner.corporation.corporation_name
+                message=(
+                    f"{owner.corporation.corporation_name} was added as new corporate"
+                    f"blueprint owner by {request.user.username}."
+                ),
+                title=(
+                    f"{__title__}: blueprint owner added: "
+                    f"{owner.corporation.corporation_name}"
                 ),
             )
     return redirect("blueprints:index")
@@ -142,8 +137,7 @@ def add_corporate_blueprint_owner(request, token):
     ]
 )
 def add_personal_blueprint_owner(request, token):
-    token_char = EveCharacter.objects.get(character_id=token.character_id)
-
+    token_char = get_object_or_404(EveCharacter, character_id=token.character_id)
     success = True
     try:
         owned_char = CharacterOwnership.objects.get(
@@ -165,7 +159,6 @@ def add_personal_blueprint_owner(request, token):
         owned_char = None
 
     if success:
-
         with transaction.atomic():
             owner, _ = Owner.objects.update_or_create(
                 corporation=None, character=owned_char
@@ -192,14 +185,13 @@ def add_personal_blueprint_owner(request, token):
         )
         if BLUEPRINTS_ADMIN_NOTIFICATIONS_ENABLED:
             notify_admins(
-                message=gettext_lazy(
-                    "%(character)s was added as a new personal blueprint owner."
-                )
-                % {
-                    "character": owner.character.character.character_name,
-                },
-                title="{}: blueprint owner added: {}".format(
-                    __title__, owner.character.character.character_name
+                message=(
+                    f"{owner.character.character.character_name} was added "
+                    "as a new personal blueprint owner."
+                ),
+                title=(
+                    f"{__title__}: blueprint owner added: "
+                    "{owner.character.character.character_name}"
                 ),
             )
     return redirect("blueprints:index")
@@ -339,7 +331,7 @@ def list_user_owners(request):
 
 @login_required
 def view_blueprint_modal(request):
-    blueprint = Blueprint.objects.get(pk=request.GET.get("blueprint_id"))
+    blueprint = get_object_or_404(Blueprint, pk=request.GET.get("blueprint_id"))
     context = {"blueprint": convert_blueprint(blueprint, request.user, details=True)}
     return render(request, "blueprints/modals/view_blueprint_content.html", context)
 
@@ -347,7 +339,7 @@ def view_blueprint_modal(request):
 @login_required
 @permissions_required(("blueprints.request_blueprints", "blueprints.manage_requests"))
 def view_request_modal(request):
-    user_request = Request.objects.get(pk=request.GET.get("request_id"))
+    user_request = get_object_or_404(Request, pk=request.GET.get("request_id"))
     context = {"request": convert_request(user_request, request.user)}
     return render(request, "blueprints/modals/view_request_content.html", context)
 
@@ -356,17 +348,18 @@ def view_request_modal(request):
 @permissions_required("blueprints.request_blueprints")
 def create_request(request):
     if request.method == "POST":
-        requested = Blueprint.objects.get(pk=request.POST.get("pk"))
+        requested = get_object_or_404(Blueprint, pk=request.POST.get("pk"))
         runs = request.POST.get("runs")
         if runs == "":
             runs = None
         user = request.user
-        Request.objects.create(
+        user_request = Request.objects.create(
             blueprint=requested,
             requesting_user=user,
             status=Request.STATUS_OPEN,
             runs=runs,
         )
+        user_request.notify_new_request()
         messages_plus.info(
             request,
             format_html(
@@ -451,15 +444,14 @@ def mark_request(
     request, request_id, status, fulfulling_user, closed, *, can_requestor_edit=False
 ):
     completed = False
-    user_request = Request.objects.get(pk=request_id)
-
+    user_request = get_object_or_404(Request, pk=request_id)
+    character_ownerships = request.user.character_ownerships.select_related(
+        "character"
+    ).all()
     corporation_ids = {
-        character.character.corporation_id
-        for character in request.user.character_ownerships.all()
+        character.character.corporation_id for character in character_ownerships
     }
-    character_ownership_ids = {
-        character.pk for character in request.user.character_ownerships.all()
-    }
+    character_ownership_ids = {character.pk for character in character_ownerships}
     if (
         (
             user_request.blueprint.owner.corporation
@@ -473,7 +465,7 @@ def mark_request(
         or (can_requestor_edit and user_request.requesting_user == request.user)
     ):
         if closed:
-            user_request.closed_at = datetime.utcnow()
+            user_request.closed_at = now()
         else:
             user_request.closed_at = None
         user_request.fulfulling_user = fulfulling_user
@@ -491,6 +483,7 @@ def mark_request_fulfilled(request, request_id):
         request, request_id, Request.STATUS_FULFILLED, request.user, True
     )
     if completed:
+        user_request.notify_request_fulfilled()
         messages_plus.info(
             request,
             format_html(
@@ -519,6 +512,7 @@ def mark_request_in_progress(request, request_id):
         request, request_id, Request.STATUS_IN_PROGRESS, request.user, False
     )
     if completed:
+        user_request.notify_request_in_progress()
         messages_plus.info(
             request,
             format_html(
@@ -549,6 +543,7 @@ def mark_request_open(request, request_id):
         request, request_id, Request.STATUS_OPEN, None, False
     )
     if completed:
+        user_request.notify_request_reopened(request.user)
         messages_plus.info(
             request,
             format_html(
@@ -580,6 +575,10 @@ def mark_request_cancelled(request, request_id):
         can_requestor_edit=True,
     )
     if completed:
+        if request.user == user_request.requesting_user:
+            user_request.notify_request_canceled_by_requestor()
+        else:
+            user_request.notify_request_canceled_by_approver(request.user)
         messages_plus.info(
             request,
             format_html(
