@@ -11,7 +11,7 @@ from app_utils.testing import add_new_token
 from ..models import Owner
 
 
-def create_owner(character_id, corporation_id):
+def create_owner(character_id, corporation_id) -> Owner:
     _, character_ownership = create_user_from_evecharacter(character_id)
     corp = (
         EveCorporationInfo.objects.get(corporation_id=corporation_id)

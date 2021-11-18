@@ -1,6 +1,6 @@
-from typing import Tuple
+from typing import List, Tuple
 
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Permission, User
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from esi.errors import TokenExpiredError, TokenInvalidError
@@ -10,7 +10,9 @@ from eveuniverse.models import EveEntity, EveSolarSystem, EveType
 from allianceauth.authentication.models import CharacterOwnership
 from allianceauth.eveonline.evelinks import dotlan
 from allianceauth.eveonline.models import EveCharacter, EveCorporationInfo
+from allianceauth.notifications import notify
 from allianceauth.services.hooks import get_extension_logger
+from app_utils.django import users_with_permission
 from app_utils.logging import LoggerAddTag, make_logger_prefix
 
 from . import __title__
@@ -647,7 +649,6 @@ class Location(models.Model):
 
 class Request(models.Model):
 
-    objects = RequestManager()
     blueprint = models.ForeignKey(
         Blueprint,
         on_delete=models.CASCADE,
@@ -688,10 +689,10 @@ class Request(models.Model):
         max_length=2,
         db_index=True,
     )
-
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
-
     closed_at = models.DateTimeField(blank=True, null=True, db_index=True)
+
+    objects = RequestManager()
 
     class Meta:
         default_permissions = ()
@@ -706,3 +707,98 @@ class Request(models.Model):
             self.requesting_user.profile.main_character.character_name,
             self.eve_type.name,
         )
+
+    def notify_new_request(self) -> None:
+        for approver in self.approvers():
+            notify(
+                title=(
+                    f"Blueprints: {self.blueprint.eve_type.name} has been requested"
+                ),
+                message=(
+                    f"A copy of {self.blueprint.eve_type.name} has been "
+                    f"requested by {self.requesting_user}."
+                ),
+                user=approver,
+                level="info",
+            )
+
+    def notify_request_in_progress(self) -> None:
+        notify(
+            title=(f"Blueprints: {self.blueprint.eve_type.name} request in progress"),
+            message=(
+                f"{self.fulfulling_user} has started producing copies for "
+                f"{self.blueprint.eve_type.name}."
+            ),
+            user=self.requesting_user,
+            level="info",
+        )
+        other_approvers = set(self.approvers()) - {self.fulfulling_user}
+        for approver in other_approvers:
+            notify(
+                title=(
+                    f"Blueprints: {self.blueprint.eve_type.name} request in progress"
+                ),
+                message=(
+                    f"{self.fulfulling_user} has started producing copies for "
+                    f"{self.blueprint.eve_type.name} as requested by"
+                    f"{self.requesting_user} "
+                ),
+                user=approver,
+                level="info",
+            )
+
+    def notify_request_reopened(self, reopened_by: User) -> None:
+        for user in set(self.approvers()) - {reopened_by} | {self.requesting_user}:
+            notify(
+                title=(f"Blueprints: {self.blueprint.eve_type.name} request re-opened"),
+                message=(
+                    f"{reopened_by} has re-opened the request for "
+                    f"{self.blueprint.eve_type.name} by"
+                    f"{self.requesting_user}"
+                ),
+                user=user,
+                level="warning",
+            )
+
+    def notify_request_fulfilled(self) -> None:
+        notify(
+            title=(f"Blueprints: {self.blueprint.eve_type.name} request completed"),
+            message=(
+                f"{self.fulfulling_user} has finished producing copies for "
+                f"{self.blueprint.eve_type.name}."
+            ),
+            user=self.requesting_user,
+            level="success",
+        )
+
+    def notify_request_canceled_by_requestor(self) -> None:
+        for approver in set(self.approvers()):
+            notify(
+                title=(f"Blueprints: {self.blueprint.eve_type.name} request canceled"),
+                message=(
+                    f"{self.requesting_user} has canceled his request for "
+                    f"{self.blueprint.eve_type.name}."
+                ),
+                user=approver,
+                level="danger",
+            )
+
+    def notify_request_canceled_by_approver(self, canceled_by: User) -> None:
+        for approver in set(self.approvers()) - {canceled_by} | {self.requesting_user}:
+            notify(
+                title=(f"Blueprints: {self.blueprint.eve_type.name} request canceled"),
+                message=(
+                    f"{canceled_by} has canceled the request for "
+                    f"{self.blueprint.eve_type.name} "
+                    f"by {self.requesting_user}."
+                ),
+                user=approver,
+                level="danger",
+            )
+
+    @classmethod
+    def approvers(cls) -> List[User]:
+        permission = Permission.objects.select_related("content_type").get(
+            content_type__app_label=cls._meta.app_label, codename="manage_requests"
+        )
+        return users_with_permission(permission)
