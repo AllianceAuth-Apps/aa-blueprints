@@ -7,6 +7,8 @@ and this project adheres to [PEP-440](https://www.python.org/dev/peps/pep-0440/)
 
 ## [Unreleased]
 
+## [1.2.1] - 2022-02-22
+
 ### Fixed
 
 - Variable name showing in notifiation instead of owner name when adding blueprint owner. (#13)
