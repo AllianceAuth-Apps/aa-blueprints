@@ -540,6 +540,9 @@ class TestAddPersonalBlueprintOwner(TestCase):
         )
         self.assertTrue(mock_update_blueprints_for_owner.delay.called)
         self.assertTrue(mock_update_locations_for_owner.delay.called)
+        _, kwargs = mock_notify_admins.call_args
+        self.assertIn(owner.character.character.character_name, kwargs["title"])
+        self.assertIn(owner.character.character.character_name, kwargs["message"])
 
     @patch(VIEWS_PATH + ".BLUEPRINTS_ADMIN_NOTIFICATIONS_ENABLED", False)
     def test_should_add_new_owner_and_not_notify_admins(

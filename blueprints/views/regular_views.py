@@ -191,7 +191,7 @@ def add_personal_blueprint_owner(request, token):
                 ),
                 title=(
                     f"{__title__}: blueprint owner added: "
-                    "{owner.character.character.character_name}"
+                    f"{owner.character.character.character_name}"
                 ),
             )
     return redirect("blueprints:index")
