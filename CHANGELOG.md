@@ -7,6 +7,10 @@ and this project adheres to [PEP-440](https://www.python.org/dev/peps/pep-0440/)
 
 ## [Unreleased]
 
+### Fixed
+
+- Variable name showing in notifiation instead of owner name when adding blueprint owner. (#13)
+
 ## [1.2.0] - 2021-11-18
 
 ### Added
@@ -17,8 +21,6 @@ and this project adheres to [PEP-440](https://www.python.org/dev/peps/pep-0440/)
 
 - Updated `swagger.json`
 - Added CI tests for AA 2.9 / Django 3.2
-
-### Fixed
 
 ## [1.1.3] - 2021-06-14
 

@@ -13,7 +13,7 @@ before_script:
 
 pre-commit:
   stage: review
-  image: python:3.6-buster
+  image: python:3.8-buster
   variables:
     PRE_COMMIT_HOME: ${CI_PROJECT_DIR}/.cache/pre-commit
   cache:
