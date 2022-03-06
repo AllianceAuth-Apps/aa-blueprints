@@ -1,4 +1,4 @@
-from django_datatables_view.base_datatable_view import BaseDatatableView
+from dj_datatables_view.base_datatable_view import BaseDatatableView
 
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy
