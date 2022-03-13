@@ -7,6 +7,8 @@ and this project adheres to [PEP-440](https://www.python.org/dev/peps/pep-0440/)
 
 ## [Unreleased]
 
+## [1.3.0] - 2022-03-13
+
 ### Changed
 
 - Drop support for Python 3.6
@@ -18,8 +20,9 @@ and this project adheres to [PEP-440](https://www.python.org/dev/peps/pep-0440/)
 
 ### Fixed
 
-- [Compatibility] AA 3.x / Django 4 :: ImportError: cannot import name
-  'ugettext_lazy' from 'django.utils.translation'
+- [Compatibility] AA 3.x / Django 4 :: ImportError: cannot import name 'ugettext_lazy' from 'django.utils.translation'
+
+Thanks to @ppfeufer for your contribution!
 
 ## [1.2.1] - 2022-02-22
 
