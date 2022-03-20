@@ -1,4 +1,22 @@
 # Upgrading
+## 1.0.0 -> +
+
+### Step 5 - Upgrade Package
+
+```
+pip install -U aa-blueprints
+```
+
+### Step 6 - Post-Install
+```
+./manage.py migrate
+./manage.py collectstatic
+```
+Restart AllianceAuth
+```
+supervisorctl restart myauth:
+```
+
 ## 0.x.y -> 1.0.0
 
 **WARNING: This is a DESTRUCTIVE operation. You will lose outstanding**
