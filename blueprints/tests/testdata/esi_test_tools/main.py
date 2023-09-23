@@ -107,7 +107,6 @@ class _EsiRoute:
                 )
         try:
             if self._primary_key:
-
                 if isinstance(self._primary_key, tuple):
                     pk_value_1 = str(kwargs[self._primary_key[0]])
                     pk_value_2 = str(kwargs[self._primary_key[1]])

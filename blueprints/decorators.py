@@ -1,3 +1,5 @@
+"""Decorators for Blueprints."""
+
 from functools import wraps
 
 from esi.errors import TokenError

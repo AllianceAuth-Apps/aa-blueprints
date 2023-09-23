@@ -1,8 +1,8 @@
+"""Admin site for Blueprints."""
+
 from django.contrib import admin
 
 from .models import Blueprint, IndustryJob, Location, Owner, Request
-
-# Register your models here.
 
 
 @admin.register(Blueprint)
@@ -130,7 +130,6 @@ class RequestAdmin(admin.ModelAdmin):
 
 @admin.register(IndustryJob)
 class IndustryJobAdmin(admin.ModelAdmin):
-
     list_display = ("_blueprint", "_installer", "_activity")
 
     list_select_related = ("blueprint__eve_type",)

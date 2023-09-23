@@ -32,9 +32,6 @@ tx_push:
 tx_pull:
 	tx pull -f -a
 
-update_swagger:
-	curl -o $(package)/swagger.json https://esi.evetech.net/latest/swagger.json
-
 create_testdata:
 	python ../myauth/manage.py test $(package).tests.testdata.create_eveuniverse --keepdb -v 2
 

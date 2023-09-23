@@ -1,3 +1,5 @@
+"""Global constants for Blueprints."""
+
 # Eve IDs
 EVE_CATEGORY_ID_STATION = 3
 EVE_CATEGORY_ID_SHIP = 6

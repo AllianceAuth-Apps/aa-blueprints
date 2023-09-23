@@ -1,15 +1,6 @@
-from app_utils.django import clean_setting
+"""Settings for Blueprints."""
 
-# put your app settings here
-
-"""
-EXAMPLE_SETTING_ONE = getattr(
-    settings,
-    'EXAMPLE_SETTING_ONE',
-    None
-)
-"""
-
+from app_utils.app_settings import clean_setting
 
 BLUEPRINTS_ESI_TIMEOUT_ENABLED = clean_setting("BLUEPRINTS_ESI_TIMEOUT_ENABLED", True)
 

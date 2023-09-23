@@ -1,19 +1,11 @@
 stages:
-  - pre-commit
-  - review
+  - checks
   - test
   - deploy
 
-before_script:
-  - apt-get update
-  - apt-get install redis-server -y
-  - redis-server --daemonize yes
-  - python -V
-  - pip install tox
-
 pre-commit:
-  stage: review
-  image: python:3.8-bullseye
+  stage: checks
+  image: python:3.10-bullseye
   variables:
     PRE_COMMIT_HOME: ${CI_PROJECT_DIR}/.cache/pre-commit
   cache:
@@ -23,61 +15,59 @@ pre-commit:
     - pip install pre-commit
     - pre-commit run --all-files
 
-.test-py37:
-  needs: []
-  stage: test
-  image: python:3.7-bullseye
+.tox_setup:
+  before_script:
+    - apt-get update
+    - apt-get install redis-server -y
+    - redis-server --daemonize yes
+    - python -V
+    - pip install tox
 
-.test-py38:
-  needs: []
-  stage: test
+# pylint:
+#   stage: checks
+#   extends: .tox_setup
+#   image: python:3.10-bullseye
+#   script:
+#     - tox -e pylint
+
+test-py38-dj40:
+  extends: .tox_setup
   image: python:3.8-bullseye
+  script:
+    - tox -e py38-django40
+    - bash <(curl -s https://codecov.io/bash)
 
-.test-py39:
-  needs: []
-  stage: test
+test-py39-dj40:
+  extends: .tox_setup
   image: python:3.9-bullseye
-
-test-37-django32:
-  extends: .test-py37
   script:
-    - tox -e py37-django32
+    - tox -e py39-django40
     - bash <(curl -s https://codecov.io/bash)
 
-test-38-django32:
-  extends: .test-py38
+test-py310-dj40:
+  extends: .tox_setup
+  image: python:3.10-bullseye
   script:
-    - tox -e py38-django32
+    - tox -e py310-django40
     - bash <(curl -s https://codecov.io/bash)
 
-test-39-django32:
-  extends: .test-py39
+test-py311-dj40:
+  extends: .tox_setup
+  image: python:3.11-bullseye
   script:
-    - tox -e py39-django32
+    - tox -e py311-django40
     - bash <(curl -s https://codecov.io/bash)
 
 deploy-pypi:
   stage: deploy
-  image: python:3.8-bullseye
+  image: python:3.10-bullseye
 
   before_script:
-    - pip install twine wheel
+    - pip install build twine
 
   script:
-    - python setup.py sdist bdist_wheel
+    - python -m build
     - twine upload dist/*
 
   only:
     - tags
-
-danger:
-  needs: []
-  stage: review
-  image: ruby:2.5
-  before_script:
-    - gem install danger-gitlab
-  script:
-    - danger --fail-on-errors=true
-
-include:
-  - template: 'Workflows/MergeRequest-Pipelines.gitlab-ci.yml'
