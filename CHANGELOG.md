@@ -7,6 +7,16 @@ and this project adheres to [PEP-440](https://www.python.org/dev/peps/pep-0440/)
 
 ## [Unreleased]
 
+## [1.4.0] - 2023-09-23
+
+### Changed
+
+- Migrated to AA 3
+- Migrated build process to PEP 621
+- Updated main dependencies
+- Refactoring
+- Removed danger
+
 ## [1.3.0] - 2022-03-13
 
 ### Changed

@@ -1,3 +1,5 @@
+"""Regular views for Blueprints."""
+
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.http import JsonResponse
@@ -252,23 +254,21 @@ def convert_blueprint(blueprint: Blueprint, user, details=False) -> dict:
     return summary
 
 
-"""
-@login_required
-@permissions_required("blueprints.basic_access")
-def list_blueprints(request):
-    blueprint_rows = [
-        convert_blueprint(blueprint, request.user)
-        for blueprint in Blueprint.objects.user_has_access(request.user)
-    ]
-    return JsonResponse(blueprint_rows, safe=False)
-"""
+# @login_required
+# @permissions_required("blueprints.basic_access")
+# def list_blueprints(request):
+#     blueprint_rows = [
+#         convert_blueprint(blueprint, request.user)
+#         for blueprint in Blueprint.objects.user_has_access(request.user)
+#     ]
+#     return JsonResponse(blueprint_rows, safe=False)
 
 
 @login_required
 @permissions_required("blueprints.basic_access")
 def list_blueprints_ffd(request):
     """filterDropDown endpoint with server-side processing for blueprints list"""
-    result = dict()
+    result = {}
     blueprint_query = Blueprint.objects.user_has_access(
         request.user
     ).annotate_owner_name()
@@ -410,8 +410,7 @@ def convert_request(request: Request, user) -> dict:
 @login_required
 @permissions_required("blueprints.request_blueprints")
 def list_user_requests(request):
-
-    request_rows = list()
+    request_rows = []
 
     request_query = Request.objects.select_related_default().filter(
         requesting_user=request.user, closed_at=None
@@ -425,8 +424,7 @@ def list_user_requests(request):
 @login_required
 @permissions_required("blueprints.manage_requests")
 def list_open_requests(request):
-
-    request_rows = list()
+    request_rows = []
 
     requests = Request.objects.select_related_default().requests_fulfillable_by_user(
         request.user

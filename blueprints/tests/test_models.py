@@ -22,7 +22,6 @@ MODELS_PATH = "blueprints.models"
 
 @patch(MODELS_PATH + ".esi")
 @patch(MANAGERS_PATH + ".esi")
-@patch("eveuniverse.managers.esi")
 class TestCorporateOwner(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -35,7 +34,7 @@ class TestCorporateOwner(NoSocketsTestCase):
         self.owner = create_owner(character_id=1101, corporation_id=2101)
 
     def test_should_return_corporation_name_for_owner(
-        self, mock_eveuniverse_managers, mock_esi_managers, mock_esi_models
+        self, mock_esi_managers, mock_esi_models
     ):
         # when
         result = str(self.owner)
@@ -43,7 +42,7 @@ class TestCorporateOwner(NoSocketsTestCase):
         self.assertEqual(result, "Lexcorp")
 
     def test_should_return_corporation_name_for_owner_with_no_character(
-        self, mock_eveuniverse_managers, mock_esi_managers, mock_esi_models
+        self, mock_esi_managers, mock_esi_models
     ):
         # given
         owner = Owner.objects.create(
@@ -55,7 +54,7 @@ class TestCorporateOwner(NoSocketsTestCase):
         self.assertEqual(result, "Wayne Technologies")
 
     def test_should_return_empty_string_for_empty_owner(
-        self, mock_eveuniverse_managers, mock_esi_managers, mock_esi_models
+        self, mock_esi_managers, mock_esi_models
     ):
         # given
         owner = Owner.objects.create()
@@ -64,10 +63,7 @@ class TestCorporateOwner(NoSocketsTestCase):
         # then
         self.assertEqual(result, "")
 
-    def test_update_locations_esi(
-        self, mock_eveuniverse_managers, mock_esi_managers, mock_esi_models
-    ):
-        mock_eveuniverse_managers.client = esi_client_stub
+    def test_update_locations_esi(self, mock_esi_managers, mock_esi_models):
         mock_esi_managers.client = esi_client_stub
         mock_esi_models.client = esi_client_stub
 
@@ -78,20 +74,15 @@ class TestCorporateOwner(NoSocketsTestCase):
             Location.objects.get(id=60003760),
         )
 
-    def test_update_blueprints_esi(
-        self, mock_eveuniverse_managers, mock_esi_managers, mock_esi_models
-    ):
-        mock_eveuniverse_managers.client = esi_client_stub
+    def test_update_blueprints_esi(self, mock_esi_managers, mock_esi_models):
         mock_esi_managers.client = esi_client_stub
         mock_esi_models.client = esi_client_stub
         self.owner.update_blueprints_esi()
         self.assertEquals(Blueprint.objects.filter(eve_type_id=33519).count(), 1)
 
-    def test_should_update_industry_jobs_esi(
-        self, mock_eveuniverse_managers, mock_esi_managers, mock_esi_models
-    ):
+    def test_should_update_industry_jobs_esi(self, mock_esi_managers, mock_esi_models):
         # given
-        mock_eveuniverse_managers.client = esi_client_stub
+
         mock_esi_managers.client = esi_client_stub
         mock_esi_models.client = esi_client_stub
         self.owner.update_blueprints_esi()
@@ -111,7 +102,6 @@ class TestCorporateOwner(NoSocketsTestCase):
 
 @patch(MODELS_PATH + ".esi")
 @patch(MANAGERS_PATH + ".esi")
-@patch("eveuniverse.managers.esi")
 class TestPersonalOwner(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -123,10 +113,7 @@ class TestPersonalOwner(NoSocketsTestCase):
     def setUp(self) -> None:
         self.owner = create_owner(character_id=1101, corporation_id=None)
 
-    def test_update_locations_esi(
-        self, mock_eveuniverse_managers, mock_esi_managers, mock_esi_models
-    ):
-        mock_eveuniverse_managers.client = esi_client_stub
+    def test_update_locations_esi(self, mock_esi_managers, mock_esi_models):
         mock_esi_managers.client = esi_client_stub
         mock_esi_models.client = esi_client_stub
 
@@ -137,20 +124,15 @@ class TestPersonalOwner(NoSocketsTestCase):
             Location.objects.get(id=60003760),
         )
 
-    def test_update_blueprints_esi(
-        self, mock_eveuniverse_managers, mock_esi_managers, mock_esi_models
-    ):
-        mock_eveuniverse_managers.client = esi_client_stub
+    def test_update_blueprints_esi(self, mock_esi_managers, mock_esi_models):
         mock_esi_managers.client = esi_client_stub
         mock_esi_models.client = esi_client_stub
         self.owner.update_blueprints_esi()
         self.assertEquals(Blueprint.objects.filter(eve_type_id=33519).count(), 1)
 
-    def test_should_update_industry_jobs_esi(
-        self, mock_eveuniverse_managers, mock_esi_managers, mock_esi_models
-    ):
+    def test_should_update_industry_jobs_esi(self, mock_esi_managers, mock_esi_models):
         # given
-        mock_eveuniverse_managers.client = esi_client_stub
+
         mock_esi_managers.client = esi_client_stub
         mock_esi_models.client = esi_client_stub
         self.owner.update_blueprints_esi()

@@ -1,3 +1,5 @@
+"""Routes for Blueprints."""
+
 from django.urls import path
 
 from .views import regular_views

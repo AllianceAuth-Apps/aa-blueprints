@@ -1,3 +1,5 @@
+"""Models for Blueprints."""
+
 from typing import List, Tuple
 
 from django.contrib.auth.models import Permission, User
@@ -105,8 +107,7 @@ class Owner(models.Model):
         try:
             if self.corporation:
                 return self.corporation.corporation_name
-            else:
-                return self.character.character.character_name
+            return self.character.character.character_name
         except AttributeError:
             return ""
 
@@ -151,8 +152,11 @@ class Owner(models.Model):
             else:
                 parent_location = assets_by_id[location]["location_id"]
                 location_obj = Location.objects.filter(id=location).first()
-                location_obj.parent = self._fetch_location(parent_location, token=token)
-                location_obj.save()
+                if location_obj:
+                    location_obj.parent = self._fetch_location(
+                        parent_location, token=token
+                    )
+                    location_obj.save()
 
     def update_blueprints_esi(self):
         """updates all blueprints from ESI"""
@@ -248,7 +252,6 @@ class Owner(models.Model):
                 )[0]
 
             for job in jobs:
-
                 original = IndustryJob.objects.filter(
                     owner=self, id=job["job_id"]
                 ).first()
@@ -286,7 +289,7 @@ class Owner(models.Model):
                             )
                 else:
                     blueprint_id = job["blueprint_id"]
-                    logger.warn(f"Unmatchable blueprint ID: {blueprint_id}")
+                    logger.warning(f"Unmatchable blueprint ID: {blueprint_id}")
             IndustryJob.objects.filter(pk__in=job_ids_to_remove).delete()
 
     @fetch_token_for_owner(["esi-assets.read_corporation_assets.v1"])
@@ -305,7 +308,6 @@ class Owner(models.Model):
 
     @fetch_token_for_owner(["esi-corporations.read_blueprints.v1"])
     def _fetch_corporate_blueprints(self, token) -> list:
-
         corporation_id = self.corporation.corporation_id
 
         blueprints = esi.client.Corporation.get_corporations_corporation_id_blueprints(
@@ -316,7 +318,6 @@ class Owner(models.Model):
 
     @fetch_token_for_owner(["esi-characters.read_blueprints.v1"])
     def _fetch_personal_blueprints(self, token) -> list:
-
         character_id = self.character.character.character_id
 
         blueprints = esi.client.Character.get_characters_character_id_blueprints(
@@ -327,7 +328,6 @@ class Owner(models.Model):
 
     @fetch_token_for_owner(["esi-industry.read_corporation_jobs.v1"])
     def _fetch_corporate_industry_jobs(self, token) -> list:
-
         corporation_id = self.corporation.corporation_id
 
         jobs = esi.client.Industry.get_corporations_corporation_id_industry_jobs(
@@ -338,7 +338,6 @@ class Owner(models.Model):
 
     @fetch_token_for_owner(["esi-industry.read_character_jobs.v1"])
     def _fetch_personal_industry_jobs(self, token) -> list:
-
         character_id = self.character.character.character_id
 
         jobs = esi.client.Industry.get_characters_character_id_industry_jobs(
@@ -412,12 +411,10 @@ class Owner(models.Model):
         """returns standard logger prefix function"""
         if self.corporation:
             return make_logger_prefix(self.corporation.corporation_ticker)
-        else:
-            return make_logger_prefix(self.character.character.character_name)
+        return make_logger_prefix(self.character.character.character_name)
 
 
 class Blueprint(models.Model):
-
     item_id = models.PositiveBigIntegerField(
         primary_key=True, help_text="The EVE Item ID of the blueprint"
     )
@@ -597,9 +594,7 @@ class Location(models.Model):
         return self.name_plus + f" [id={self.id}]"
 
     def __repr__(self) -> str:
-        return "{}(id={}, name='{}')".format(
-            self.__class__.__name__, self.id, self.name
-        )
+        return f"{self.__class__.__name__}(id={self.id}, name='{self.name}')"
 
     @property
     def name_plus(self) -> str:
@@ -648,7 +643,6 @@ class Location(models.Model):
 
 
 class Request(models.Model):
-
     blueprint = models.ForeignKey(
         Blueprint,
         on_delete=models.CASCADE,
@@ -701,11 +695,10 @@ class Request(models.Model):
         return f"{self.requesting_user.profile.main_character.character_name}'s request for {self.blueprint.eve_type.name}"
 
     def __repr__(self) -> str:
-        return "{}(id={}, requesting_user='{}', type_name='{}')".format(
-            self.__class__.__name__,
-            self.pk,
-            self.requesting_user.profile.main_character.character_name,
-            self.eve_type.name,
+        return (
+            f"{self.__class__.__name__}(id={self.pk}, "
+            f"requesting_user='{self.requesting_user.profile.main_character.character_name}', "
+            f"type_name='{self.eve_type.name}')"
         )
 
     def notify_new_request(self) -> None:

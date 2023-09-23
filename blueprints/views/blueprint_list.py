@@ -1,3 +1,7 @@
+"""Views for rending blueprint lists for Blueprints."""
+
+from typing import Any
+
 from dj_datatables_view.base_datatable_view import BaseDatatableView
 
 from django.utils.html import format_html
@@ -55,8 +59,12 @@ class BlueprintListJson(BaseDatatableView):
     # and make it return huge amount of data
     max_display_length = 500
 
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self._user_has_location_permission = None
+
     def initialize(self, *args, **kwargs):
-        super(BlueprintListJson, self).initialize(*args, **kwargs)
+        super().initialize(*args, **kwargs)
         self._user_has_location_permission = self.request.user.has_perm(
             "blueprints.view_blueprint_locations"
         )
@@ -79,8 +87,7 @@ class BlueprintListJson(BaseDatatableView):
                 else:
                     kwargs = {f"{field}__istartswith": my_filter}
                 return qs.filter(**kwargs)
-            else:
-                return qs
+            return qs
 
         qs = qs.annotate_is_bpo().annotate_owner_name()
         qs = apply_search_filter(qs, 9, "location__name_plus")
@@ -104,14 +111,16 @@ class BlueprintListJson(BaseDatatableView):
                 BLUEPRINTS_LIST_ICON_OUTPUT_SIZE,
                 BLUEPRINTS_LIST_ICON_OUTPUT_SIZE,
             )
-        elif column == "location":
+
+        if column == "location":
             if self._user_has_location_permission:
                 return row.location.name_plus
-            else:
-                return gettext_lazy("(Unknown)")
-        elif column == "is_original":
+            return gettext_lazy("(Unknown)")
+
+        if column == "is_original":
             return "Yes" if row.is_original else "No"
-        elif column == "owner":
+
+        if column == "owner":
             if row.owner.corporation:
                 return {
                     "display": (
@@ -120,16 +129,15 @@ class BlueprintListJson(BaseDatatableView):
                     ),
                     "sort": row.owner.corporation.corporation_name,
                 }
-            else:
-                return {
-                    "display": (
-                        "<span class='fas fa-user'></span>&nbsp;"
-                        + row.owner.character.character.character_name
-                    ),
-                    "sort": row.owner.character.character.character_name,
-                }
-        else:
-            return super(BlueprintListJson, self).render_column(row, column)
+            return {
+                "display": (
+                    "<span class='fas fa-user'></span>&nbsp;"
+                    + row.owner.character.character.character_name
+                ),
+                "sort": row.owner.character.character.character_name,
+            }
+
+        return super().render_column(row, column)
 
 
 # @login_required

@@ -1,3 +1,5 @@
+"""Managers for Blueprints."""
+
 import datetime as dt
 from typing import Tuple
 
@@ -12,12 +14,12 @@ from eveuniverse.models import EveEntity, EveSolarSystem, EveType
 
 from allianceauth.eveonline.models import EveAllianceInfo, EveCorporationInfo
 from allianceauth.services.hooks import get_extension_logger
+from app_utils.esi import fetch_esi_status
 from app_utils.logging import LoggerAddTag
 
 from . import __title__
 from .app_settings import BLUEPRINTS_LOCATION_STALE_HOURS
 from .constants import EVE_TYPE_ID_SOLAR_SYSTEM
-from .helpers import fetch_esi_status
 from .providers import esi
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
@@ -286,7 +288,7 @@ class LocationManager(models.Manager):
                 structure_id=id, token=token.valid_access_token()
             ).results()
         except (HTTPUnauthorized, HTTPForbidden) as http_error:
-            logger.warn(
+            logger.warning(
                 "%s: No access to structure #%s: %s",
                 token.character_name,
                 id,

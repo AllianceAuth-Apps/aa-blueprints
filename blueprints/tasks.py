@@ -1,3 +1,5 @@
+"""Tasks for Blueprints."""
+
 import random
 
 from bravado.exception import HTTPBadGateway, HTTPGatewayTimeout, HTTPServiceUnavailable
@@ -7,11 +9,11 @@ from esi.models import Token
 
 from allianceauth.services.hooks import get_extension_logger
 from allianceauth.services.tasks import QueueOnce
+from app_utils.esi import EsiErrorLimitExceeded, EsiOffline
 from app_utils.logging import LoggerAddTag
 
 from . import __title__
 from .app_settings import BLUEPRINTS_TASKS_TIME_LIMIT
-from .helpers import EsiErrorLimitExceeded, EsiOffline
 from .models import Location, Owner
 
 DEFAULT_TASK_PRIORITY = 6
@@ -19,7 +21,6 @@ DEFAULT_TASK_PRIORITY = 6
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
-# Create your tasks here
 TASK_DEFAULT_KWARGS = {
     "time_limit": BLUEPRINTS_TASKS_TIME_LIMIT,
 }
@@ -52,7 +53,8 @@ TASK_ESI_KWARGS = {
 )
 def update_blueprints_for_owner(self, owner_pk):
     """fetches all blueprints for owner from ESI"""
-    return _get_owner(owner_pk).update_blueprints_esi()
+    owner = Owner.objects.get(pk=owner_pk)
+    return owner.update_blueprints_esi()
 
 
 @shared_task(
@@ -67,7 +69,8 @@ def update_blueprints_for_owner(self, owner_pk):
 )
 def update_industry_jobs_for_owner(self, owner_pk):
     """fetches all industry jobs for owner from ESI"""
-    return _get_owner(owner_pk).update_industry_jobs_esi()
+    owner = Owner.objects.get(pk=owner_pk)
+    return owner.update_industry_jobs_esi()
 
 
 @shared_task(
@@ -82,7 +85,8 @@ def update_industry_jobs_for_owner(self, owner_pk):
 )
 def update_locations_for_owner(self, owner_pk):
     """fetches all blueprints for owner from ESI"""
-    return _get_owner(owner_pk).update_locations_esi()
+    owner = Owner.objects.get(pk=owner_pk)
+    return owner.update_locations_esi()
 
 
 @shared_task(**TASK_DEFAULT_KWARGS)
@@ -148,14 +152,3 @@ def update_structure_esi(self, id: int, token_pk: int):
             ex.retry_in,
         )
         raise self.retry(countdown=ex.retry_in) from ex
-
-
-def _get_owner(owner_pk: int) -> Owner:
-    """returns the owner or raises exception"""
-    try:
-        owner = Owner.objects.get(pk=owner_pk)
-    except Owner.DoesNotExist:
-        raise Owner.DoesNotExist(
-            "Requested owner with pk {} does not exist".format(owner_pk)
-        )
-    return owner

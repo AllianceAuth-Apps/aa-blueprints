@@ -33,7 +33,6 @@ def _generate_token(
     timestamp_dt: object = None,
     expires_in: int = 1200,
 ) -> dict:
-
     if timestamp_dt is None:
         timestamp_dt = datetime.utcnow()
     if scopes is None:
