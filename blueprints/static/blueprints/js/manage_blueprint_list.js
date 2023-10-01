@@ -5,7 +5,7 @@ $(document).ready(function () {
 
     var listUserOwnerUrl = blueprintsSettings.listUserOwnerUrl;
     function removeOwnerUrl(id) {
-        return blueprintsSettings.removeOwnerUrl.replace("12345",id);
+        return blueprintsSettings.removeOwnerUrl.replace("12345", id);
     }
     var dataTablesPageLength = blueprintsSettings.dataTablesPageLength;
     var dataTablesPaging = blueprintsSettings.dataTablesPaging;
@@ -22,6 +22,7 @@ $(document).ready(function () {
 
         columns: [
             { data: "name" },
+            { data: "quantity" },
             {
                 className: "right-column",
                 data: "id",
@@ -41,8 +42,8 @@ $(document).ready(function () {
         pageLength: dataTablesPageLength,
 
         columnDefs: [
-            { sortable: false, targets: [1] },
-            { visible: false, targets: [2, 3] },
+            { sortable: false, targets: [2] },
+            { visible: false, targets: [3, 4] },
             {
                 // The `data` parameter refers to the data for the cell (defined by the
                 // `data` option, which defaults to the column being worked with, in
@@ -51,12 +52,12 @@ $(document).ready(function () {
                     if (type === "display") {
                         return '<form method="post" class="inline" action="' + removeOwnerUrl(data) + '">' +
                             csrfToken +
-                            '<button type="submit" class="btn btn-danger btn-sm btn-square" aria-label="' + removeBlueprintsText + '" title="' + removeBlueprintsText  + '"><span class="fas fa-trash"></span></button></form>';
+                            '<button type="submit" class="btn btn-danger btn-sm btn-square" aria-label="' + removeBlueprintsText + '" title="' + removeBlueprintsText + '"><span class="fas fa-trash"></span></button></form>';
                     }
 
                     return data;
                 },
-                targets: [1],
+                targets: [2],
             },
             {
                 render: function (data, type, row) {

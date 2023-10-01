@@ -8,6 +8,7 @@ from bravado.exception import HTTPForbidden, HTTPUnauthorized
 from django.contrib.auth.models import User
 from django.db import models
 from django.db.models import Case, F, Q, Value, When
+from django.db.models.functions import Concat
 from django.utils.timezone import now
 from esi.models import Token
 from eveuniverse.models import EveEntity, EveSolarSystem, EveType
@@ -49,11 +50,23 @@ class BlueprintQuerySet(models.QuerySet):
             )
         )
 
+    def annotate_location_name(self) -> models.QuerySet:
+        """Annotate calculated location name field."""
+        return self.annotate(
+            location_name=Case(
+                When(~Q(location__name=""), then=F("location__name")),
+                When(~Q(location__parent=None), then=F("location__parent__name")),
+                default=Concat(
+                    Value("Unknown location "),
+                    "location__id",
+                    output_field=models.CharField(),
+                ),
+                output_field=models.CharField(),
+            )
+        )
 
-class BlueprintManager(models.Manager):
-    def get_queryset(self) -> models.QuerySet:
-        return BlueprintQuerySet(self.model, using=self._db)
 
+class BlueprintManagerBase(models.Manager):
     def user_has_access(self, user) -> models.QuerySet:
         from .models import Owner
 
@@ -111,18 +124,14 @@ class BlueprintManager(models.Manager):
         return blueprints_query
 
 
+BlueprintManager = BlueprintManagerBase.from_queryset(BlueprintQuerySet)
+
+
 class LocationQuerySet(models.QuerySet):
-    def annotate_name_plus(self) -> models.QuerySet:
-        return self.annotate(
-            name_plus=Case(
-                When(Q(name="") & ~Q(parent=None), then=F("parent__name")),
-                default=F("name"),
-                output_field=models.CharField(),
-            )
-        )
+    pass
 
 
-class LocationManager(models.Manager):
+class LocationManagerBase(models.Manager):
     """Manager for Location model
 
     We recommend preferring the "async" variants, because it includes protection
@@ -139,9 +148,6 @@ class LocationManager(models.Manager):
     """
 
     _UPDATE_EMPTY_GRACE_MINUTES = 5
-
-    def get_queryset(self) -> models.QuerySet:
-        return LocationQuerySet(self.model, using=self._db)
 
     def get_or_create_esi(self, id: int, token: Token) -> Tuple[models.Model, bool]:
         """gets or creates location object with data fetched from ESI
@@ -333,6 +339,9 @@ class LocationManager(models.Manager):
         )
 
 
+LocationManager = LocationManagerBase.from_queryset(LocationQuerySet)
+
+
 class RequestQuerySet(models.QuerySet):
     def requests_fulfillable_by_user(
         self, user: User, character_ownerships=None
@@ -378,10 +387,7 @@ class RequestQuerySet(models.QuerySet):
         return request_query
 
 
-class RequestManager(models.Manager):
-    def get_queryset(self) -> models.QuerySet:
-        return RequestQuerySet(self.model, using=self._db)
-
+class RequestManagerBase(models.Manager):
     def select_related_default(self) -> models.QuerySet:
         return self.select_related(
             "blueprint",
@@ -399,3 +405,6 @@ class RequestManager(models.Manager):
             .requests_being_fulfilled_by_user(user, character_ownerships)
             .count()
         )
+
+
+RequestManager = RequestManagerBase.from_queryset(RequestQuerySet)

@@ -9,9 +9,11 @@ from allianceauth.eveonline.models import EveCharacter, EveCorporationInfo
 from allianceauth.tests.auth_utils import AuthUtils
 from app_utils.testing import NoSocketsTestCase
 
-from ..models import Blueprint, Location, Owner, Request
+from blueprints.models import Blueprint, Location, Owner, Request
+
 from . import add_character_to_user, create_owner, create_user_from_evecharacter
 from .testdata.esi_client_stub import esi_client_stub
+from .testdata.factory import BlueprintFactory, LocationStationFactory, OwnerFactory
 from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
 from .testdata.load_locations import load_locations
@@ -426,3 +428,42 @@ class TestRequestManager(TestBlueprintsBase):
         result = Request.objects.open_requests_total_count(self.user_1001)
         # then
         self.assertEqual(result, 2)
+
+
+class TestBlueprintManagerAnnotateLocationName(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        load_eveuniverse()
+        cls.owner = OwnerFactory()
+
+    def test_should_return_name(self):
+        # given
+        location = LocationStationFactory(name="Alpha")
+        BlueprintFactory(owner=self.owner, location=location)
+        # when
+        qs = Blueprint.objects.annotate_location_name()
+        # then
+        obj = qs.first()
+        self.assertEqual(obj.location_name, "Alpha")
+
+    def test_should_return_parent_name(self):
+        # given
+        parent_location = LocationStationFactory(name="Parent")
+        child_location = LocationStationFactory(name="", parent=parent_location)
+        BlueprintFactory(owner=self.owner, location=child_location)
+        # when
+        qs = Blueprint.objects.annotate_location_name()
+        # then
+        obj = qs.first()
+        self.assertEqual(obj.location_name, "Parent")
+
+    def test_should_return_generic_name(self):
+        # given
+        location = LocationStationFactory(name="")
+        BlueprintFactory(owner=self.owner, location=location)
+        # when
+        qs = Blueprint.objects.annotate_location_name()
+        # then
+        obj = qs.first()
+        self.assertEqual(obj.location_name, f"Unknown location {location.id}")

@@ -2,7 +2,8 @@ from django.test import TestCase
 from esi.errors import TokenError
 from esi.models import Token
 
-from ..decorators import fetch_token_for_owner
+from blueprints.decorators import fetch_token_for_owner
+
 from . import create_owner, scope_names_set
 from .testdata.load_entities import load_entities
 
