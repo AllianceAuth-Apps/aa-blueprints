@@ -2,6 +2,7 @@
 
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.html import format_html
@@ -19,14 +20,14 @@ from app_utils.allianceauth import notify_admins
 from app_utils.logging import LoggerAddTag
 from app_utils.messages import messages_plus
 
-from .. import __title__, tasks
-from ..app_settings import (
+from blueprints import __title__, tasks
+from blueprints.app_settings import (
     BLUEPRINTS_ADMIN_NOTIFICATIONS_ENABLED,
     BLUEPRINTS_DEFAULT_PAGE_LENGTH,
     BLUEPRINTS_LIST_ICON_OUTPUT_SIZE,
     BLUEPRINTS_PAGING_ENABLED,
 )
-from ..models import Blueprint, Owner, Request
+from blueprints.models import Blueprint, Owner, Request
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
@@ -277,8 +278,8 @@ def list_blueprints_ffd(request):
         for column in columns.split(","):
             if column == "location":
                 if request.user.has_perm("blueprints.view_blueprint_locations"):
-                    options = blueprint_query.values_list(
-                        "location__name_plus", flat=True
+                    options = blueprint_query.annotate_location_name().values_list(
+                        "location_name", flat=True
                     )
                 else:
                     options = []
@@ -307,7 +308,9 @@ def list_blueprints_ffd(request):
     "blueprints.add_corporate_blueprint_owner",
 )
 def list_user_owners(request):
-    owners = Owner.objects.filter(character__user=request.user)
+    owners = Owner.objects.filter(character__user=request.user).annotate(
+        quantity=Count("blueprint")
+    )
     results = []
     for owner in owners:
         if owner.corporation:
@@ -324,6 +327,7 @@ def list_user_owners(request):
                 "type": owner_type,
                 "type_display": owner_type_display,
                 "name": owner_name,
+                "quantity": owner.quantity,
             }
         )
     return JsonResponse(results, safe=False)

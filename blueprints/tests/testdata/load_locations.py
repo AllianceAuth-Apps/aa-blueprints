@@ -4,8 +4,8 @@ import os
 
 from eveuniverse.models import EveEntity
 
-from ...constants import EVE_CATEGORY_ID_STATION
-from ...models import Location
+from blueprints.constants import EVE_CATEGORY_ID_STATION
+from blueprints.models import Location
 
 _currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 

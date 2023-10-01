@@ -11,9 +11,9 @@ from eveuniverse.models import EveType
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.logging import LoggerAddTag
 
-from .. import __title__
-from ..app_settings import BLUEPRINTS_LIST_ICON_OUTPUT_SIZE
-from ..models import Blueprint
+from blueprints import __title__
+from blueprints.app_settings import BLUEPRINTS_LIST_ICON_OUTPUT_SIZE
+from blueprints.models import Blueprint
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
@@ -70,11 +70,15 @@ class BlueprintListJson(BaseDatatableView):
         )
 
     def get_initial_queryset(self):
-        # return queryset used as base for futher sorting/filtering
-        # these are simply objects displayed in datatable
-        # You should not filter data returned here by any filter values entered by user. This is because
-        # we need some base queryset to count total number of records.
-        return Blueprint.objects.user_has_access(self.request.user)
+        """Return queryset used as base for further sorting/filtering
+
+        these are simply objects displayed in datatable
+        You should not filter data returned here by any filter values entered by user. This is because
+        we need some base queryset to count total number of records.
+        """
+        return Blueprint.objects.user_has_access(
+            self.request.user
+        ).annotate_location_name()
 
     def filter_queryset(self, qs):
         def apply_search_filter(qs, column_num, field):
@@ -90,7 +94,7 @@ class BlueprintListJson(BaseDatatableView):
             return qs
 
         qs = qs.annotate_is_bpo().annotate_owner_name()
-        qs = apply_search_filter(qs, 9, "location__name_plus")
+        qs = apply_search_filter(qs, 9, "location_name")
         qs = apply_search_filter(qs, 3, "owner_name")
         qs = apply_search_filter(qs, 4, "material_efficiency")
         qs = apply_search_filter(qs, 5, "time_efficiency")
@@ -114,7 +118,7 @@ class BlueprintListJson(BaseDatatableView):
 
         if column == "location":
             if self._user_has_location_permission:
-                return row.location.name_plus
+                return row.location_name
             return gettext_lazy("(Unknown)")
 
         if column == "is_original":

@@ -71,4 +71,6 @@ disable = [
     "redefined-builtin",
     "imported-auth-user",
     "import-outside-toplevel",
+    "too-few-public-methods",
+    "fixme",
 ]

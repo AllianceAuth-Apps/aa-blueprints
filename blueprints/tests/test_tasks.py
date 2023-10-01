@@ -2,7 +2,8 @@ from unittest.mock import patch
 
 from django.test import TestCase, override_settings
 
-from .. import tasks
+from blueprints import tasks
+
 from . import create_owner
 from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse

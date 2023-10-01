@@ -422,9 +422,13 @@ class Blueprint(models.Model):
         Owner,
         on_delete=models.CASCADE,
         help_text="Corporation that owns the blueprint",
+        # TODO: With next model change: Add related name
     )
     eve_type = models.ForeignKey(
-        EveType, on_delete=models.CASCADE, help_text="Blueprint type"
+        EveType,
+        on_delete=models.CASCADE,
+        help_text="Blueprint type"
+        # TODO: with next model change: remove related name
     )
     location = models.ForeignKey(
         "Location", on_delete=models.CASCADE, help_text="Blueprint location"
@@ -599,11 +603,11 @@ class Location(models.Model):
     @property
     def name_plus(self) -> str:
         """return the actual name or 'Unknown location' for empty locations"""
-        if self.is_empty:
-            return f"Unknown location #{self.id}"
-        if not self.name and self.parent:
+        if self.name:
+            return self.name
+        if self.parent:
             return self.parent.name_plus
-        return self.name
+        return f"Unknown location {self.id}"
 
     @property
     def is_empty(self) -> bool:

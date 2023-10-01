@@ -8,7 +8,7 @@ from allianceauth.eveonline.models import EveCharacter, EveCorporationInfo
 from allianceauth.tests.auth_utils import AuthUtils
 from app_utils.testing import add_new_token
 
-from ..models import Owner
+from blueprints.models import Owner
 
 
 def create_owner(character_id, corporation_id) -> Owner:

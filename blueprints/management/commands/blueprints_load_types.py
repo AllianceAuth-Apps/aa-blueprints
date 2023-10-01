@@ -5,8 +5,8 @@ from django.core.management.base import BaseCommand
 
 from app_utils.logging import LoggerAddTag
 
-from ... import __title__
-from ...constants import EVE_CATEGORY_ID_BLUEPRINT
+from blueprints import __title__
+from blueprints.constants import EVE_CATEGORY_ID_BLUEPRINT
 
 logger = LoggerAddTag(logging.getLogger(__name__), __title__)
 

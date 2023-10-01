@@ -9,15 +9,16 @@ from allianceauth.eveonline.models import EveCorporationInfo
 from allianceauth.tests.auth_utils import AuthUtils
 from app_utils.testing import create_user_from_evecharacter, json_response_to_python
 
-from ..models import Blueprint, Location, Owner, Request
-from ..views.blueprint_list import BlueprintListJson
-from ..views.regular_views import (
+from blueprints.models import Blueprint, Location, Owner, Request
+from blueprints.views.blueprint_list import BlueprintListJson
+from blueprints.views.regular_views import (
     add_corporate_blueprint_owner,
     add_personal_blueprint_owner,
     list_blueprints_ffd,
     list_user_owners,
     remove_owner,
 )
+
 from . import create_owner
 from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse

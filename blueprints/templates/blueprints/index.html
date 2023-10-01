@@ -11,24 +11,24 @@
                 <a href="#tab-library" data-toggle="tab">{% translate "Library" %}</a>
             </li>
             {% if perms.blueprints.request_blueprints %}
-            <li>
-                <a href="#tab-user-requests" data-toggle="tab">{% translate "My Requests" %}</a>
-            </li>
+                <li>
+                    <a href="#tab-user-requests" data-toggle="tab">{% translate "My Requests" %}</a>
+                </li>
             {% endif %}
             {% if perms.blueprints.manage_requests %}
-            <li>
-                <a href="#tab-open-requests" data-toggle="tab">
-                    {% translate "Open Requests" %}
-                    {% if request_count %}
-                        &nbsp;<span class="badge">{{ request_count }}</span>
-                    {% endif %}
-                </a>
-            </li>
+                <li>
+                    <a href="#tab-open-requests" data-toggle="tab">
+                        {% translate "Open Requests" %}
+                        {% if request_count %}
+                            &nbsp;<span class="badge">{{ request_count }}</span>
+                        {% endif %}
+                    </a>
+                </li>
             {% endif %}
             {% if perms.blueprints.add_personal_blueprint_owner or perms.blueprints.add_corporate_blueprint_owner %}
-            <li>
-                <a href="#tab-manage-blueprints" data-toggle="tab">{% translate "Manage Blueprints" %}</a>
-            </li>
+                <li>
+                    <a href="#tab-manage-blueprints" data-toggle="tab">{% translate "Manage Blueprints" %}</a>
+                </li>
             {% endif %}
         </ul>
         <div class="tab-content">
@@ -100,32 +100,33 @@
 
 
             {% if perms.blueprints.add_personal_blueprint_owner or perms.blueprints.add_corporate_blueprint_owner %}
-            <div class="tab-pane panel panel-default" id="tab-manage-blueprints">
-                <div class="panel-body">
-                    <div class="clearfix" style="margin-bottom: 1rem;">
-                        <div class="pull-right">
-                            {% if perms.blueprints.add_personal_blueprint_owner %}
-                                <a class="btn btn-success btn-tabs" href="{% url 'blueprints:add_personal_blueprint_owner' %}">
-                                    {% translate "Add My Blueprints" %}
-                                </a>
-                            {% endif %}
-                            {% if perms.blueprints.add_corporate_blueprint_owner %}
-                                <a class="btn btn-success btn-tabs" href="{% url 'blueprints:add_corporate_blueprint_owner' %}">
-                                    {% translate "Add Corporation Blueprints" %}
-                                </a>
-                            {% endif %}
+                <div class="tab-pane panel panel-default" id="tab-manage-blueprints">
+                    <div class="panel-body">
+                        <div class="clearfix" style="margin-bottom: 1rem;">
+                            <div class="pull-right">
+                                {% if perms.blueprints.add_personal_blueprint_owner %}
+                                    <a class="btn btn-success btn-tabs" href="{% url 'blueprints:add_personal_blueprint_owner' %}">
+                                        {% translate "Add My Blueprints" %}
+                                    </a>
+                                {% endif %}
+                                {% if perms.blueprints.add_corporate_blueprint_owner %}
+                                    <a class="btn btn-success btn-tabs" href="{% url 'blueprints:add_corporate_blueprint_owner' %}">
+                                        {% translate "Add Corporation Blueprints" %}
+                                    </a>
+                                {% endif %}
+                            </div>
                         </div>
+                        <table id="table-manage-blueprints" style="width: 100%" class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>{% translate "Name" %}</th>
+                                    <th>{% translate "Quantity" %}</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                        </table>
                     </div>
-                    <table id="table-manage-blueprints" style="width: 100%" class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>{% translate "Name" %}</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                    </table>
                 </div>
-            </div>
             {% endif %}
         </div>
     </div>
@@ -186,11 +187,11 @@
         };
 
         $('#modalViewBlueprintContainer').on('show.bs.modal', function (event) {
-                let button = $(event.relatedTarget)
-                let ajax_url = button.data('ajax_url');
+            let button = $(event.relatedTarget)
+            let ajax_url = button.data('ajax_url');
 
-                $("#modalViewBlueprintContent").load(ajax_url)
-            });
+            $("#modalViewBlueprintContent").load(ajax_url)
+        });
 
         $('#modalViewRequestContainer').on('show.bs.modal', function (event) {
             let button = $(event.relatedTarget)

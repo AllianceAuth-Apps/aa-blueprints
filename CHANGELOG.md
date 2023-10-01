@@ -7,6 +7,16 @@ and this project adheres to [PEP-440](https://www.python.org/dev/peps/pep-0440/)
 
 ## [Unreleased]
 
+## [1.5.0] - 2023-10-01
+
+### Added
+
+- Shows quantity of blueprints on "Manage Blueprints" tab
+
+### Fixed
+
+- Does not show unknown locations in dropdown filter on "Library" tab
+
 ## [1.4.0] - 2023-09-23
 
 ### Changed

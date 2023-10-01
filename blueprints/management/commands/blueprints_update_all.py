@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 
-from ...tasks import update_all_blueprints, update_all_locations
+from blueprints.tasks import update_all_blueprints, update_all_locations
 
 
 class Command(BaseCommand):
