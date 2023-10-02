@@ -221,15 +221,17 @@ def convert_blueprint(blueprint: Blueprint, user, details=False) -> dict:
         owner_type = "character"
 
     if user.has_perm("blueprints.view_blueprint_locations"):
-        location = blueprint.location.full_qualified_name()
+        location_name = blueprint.location.full_qualified_name()
+        location_detail = blueprint.location_flag_obj.label
     else:
-        location = gettext_lazy("(Unknown)")
+        location_name = location_detail = gettext_lazy("(no access)")
     summary = {
         "icn": icon,
         "qty": blueprint.quantity,
         "pk": blueprint.pk,
         "nme": blueprint.eve_type.name,
-        "loc": location,
+        "loc": location_name,
+        "lfg": location_detail,
         "me": blueprint.material_efficiency,
         "te": blueprint.time_efficiency,
         "og": original,

@@ -193,6 +193,11 @@ class Owner(models.Model):
                 original = Blueprint.objects.filter(
                     owner=self, item_id=blueprint["item_id"]
                 ).first()
+
+                location_flag = Blueprint.LocationFlag.from_esi_data(
+                    blueprint["location_flag"]
+                )
+                eve_type, _ = EveType.objects.get_or_create_esi(id=blueprint["type_id"])
                 if original is not None:
                     # We've seen this blueprint coming from ESI, so we know it shouldn't be deleted
                     blueprint_ids_to_remove.remove(original.item_id)
@@ -200,10 +205,8 @@ class Owner(models.Model):
                         blueprint["location_id"],
                         token=token,
                     )
-                    original.location_flag = blueprint["location_flag"]
-                    original.eve_type = EveType.objects.get_or_create_esi(
-                        id=blueprint["type_id"]
-                    )[0]
+                    original.location_flag = location_flag
+                    original.eve_type = eve_type
                     original.runs = runs
                     original.material_efficiency = blueprint["material_efficiency"]
                     original.time_efficiency = blueprint["time_efficiency"]
@@ -213,13 +216,10 @@ class Owner(models.Model):
                     Blueprint.objects.create(
                         owner=self,
                         location=self._fetch_location(
-                            blueprint["location_id"],
-                            token=token,
+                            blueprint["location_id"], token=token
                         ),
-                        location_flag=blueprint["location_flag"],
-                        eve_type=EveType.objects.get_or_create_esi(
-                            id=blueprint["type_id"]
-                        )[0],
+                        location_flag=location_flag,
+                        eve_type=eve_type,
                         item_id=blueprint["item_id"],
                         runs=runs,
                         material_efficiency=blueprint["material_efficiency"],
@@ -559,6 +559,13 @@ class Blueprint(models.Model):
         WARDROBE = "Wardrobe", _("Wardrobe")
         UNDEFINED = "Undefined", _("undefined")
 
+        @classmethod
+        def from_esi_data(cls, data: str) -> "Blueprint.LocationFlag":
+            try:
+                return cls(data)
+            except ValueError:
+                return cls.UNDEFINED
+
     item_id = models.PositiveBigIntegerField(
         primary_key=True, help_text="The EVE Item ID of the blueprint"
     )
@@ -602,6 +609,10 @@ class Blueprint(models.Model):
     @property
     def is_original(self):
         return not self.runs
+
+    @property
+    def location_flag_obj(self) -> "Blueprint.LocationFlag":
+        return self.LocationFlag(self.location_flag)
 
     class Meta:
         default_permissions = ()
