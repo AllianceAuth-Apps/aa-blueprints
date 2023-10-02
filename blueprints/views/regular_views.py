@@ -311,7 +311,7 @@ def list_blueprints_ffd(request):
 )
 def list_user_owners(request):
     owners = Owner.objects.filter(character__user=request.user).annotate(
-        quantity=Count("blueprint")
+        quantity=Count("blueprints")
     )
     results = []
     for owner in owners:

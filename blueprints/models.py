@@ -572,17 +572,17 @@ class Blueprint(models.Model):
     owner = models.ForeignKey(
         Owner,
         on_delete=models.CASCADE,
+        related_name="blueprints",
         help_text="Corporation that owns the blueprint",
-        # TODO: With next model change: Add related name
     )
     eve_type = models.ForeignKey(
-        EveType,
-        on_delete=models.CASCADE,
-        help_text="Blueprint type"
-        # TODO: with next model change: remove related name
+        EveType, on_delete=models.CASCADE, related_name="+", help_text="Blueprint type"
     )
     location = models.ForeignKey(
-        "Location", on_delete=models.CASCADE, help_text="Blueprint location"
+        "Location",
+        on_delete=models.CASCADE,
+        related_name="blueprints",
+        help_text="Blueprint location",
     )
     location_flag = models.CharField(
         help_text="Additional location information",
