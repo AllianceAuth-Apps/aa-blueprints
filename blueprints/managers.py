@@ -51,15 +51,15 @@ class BlueprintQuerySet(models.QuerySet):
         )
 
     def annotate_location_name(self) -> models.QuerySet:
-        """Annotate calculated location name field."""
+        """Annotate calculated location name field
+        with parent locations up to 3 levels up.
+        """
         return self.annotate(
             location_name=Case(
+                When(~Q(location__name=""), then=F("location__name")),
                 When(
-                    ~Q(location__parent=None)
-                    & ~Q(location__parent__parent=None)
-                    & ~Q(location__parent__parent__parent=None)
-                    & ~Q(location__parent__parent__parent__name=""),
-                    then=F("location__parent__parent__parent__name"),
+                    ~Q(location__parent=None) & ~Q(location__parent__name=""),
+                    then=F("location__parent__name"),
                 ),
                 When(
                     ~Q(location__parent=None)
@@ -68,10 +68,12 @@ class BlueprintQuerySet(models.QuerySet):
                     then=F("location__parent__parent__name"),
                 ),
                 When(
-                    ~Q(location__parent=None) & ~Q(location__parent__name=""),
-                    then=F("location__parent__name"),
+                    ~Q(location__parent=None)
+                    & ~Q(location__parent__parent=None)
+                    & ~Q(location__parent__parent__parent=None)
+                    & ~Q(location__parent__parent__parent__name=""),
+                    then=F("location__parent__parent__parent__name"),
                 ),
-                When(~Q(location__name=""), then=F("location__name")),
                 default=Concat(
                     Value("Location #"), "location__id", output_field=models.CharField()
                 ),

@@ -7,6 +7,12 @@ and this project adheres to [PEP-440](https://www.python.org/dev/peps/pep-0440/)
 
 ## [Unreleased]
 
+## [1.5.2] - 2023-10-02
+
+### Changed
+
+- Show structure names instead of system names for blueprint locations
+
 ## [1.5.1] - 2023-10-02
 
 ### Changed
