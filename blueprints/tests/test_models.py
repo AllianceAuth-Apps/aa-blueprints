@@ -450,7 +450,7 @@ class TestBlueprintManagerAnnotateLocationName(NoSocketsTestCase):
     def test_should_return_parent_name(self):
         # given
         parent_location = LocationStationFactory(name="Parent")
-        child_location = LocationStationFactory(name="Child", parent=parent_location)
+        child_location = LocationStationFactory(name="", parent=parent_location)
         BlueprintFactory(owner=self.owner, location=child_location)
         # when
         qs = Blueprint.objects.annotate_location_name()
@@ -471,10 +471,8 @@ class TestBlueprintManagerAnnotateLocationName(NoSocketsTestCase):
     def test_should_return_parent_parent_name(self):
         # given
         parent_location = LocationStationFactory(name="Parent")
-        child_location = LocationStationFactory(name="Child 1", parent=parent_location)
-        child_child_location = LocationStationFactory(
-            name="Child 2", parent=child_location
-        )
+        child_location = LocationStationFactory(name="", parent=parent_location)
+        child_child_location = LocationStationFactory(name="", parent=child_location)
         BlueprintFactory(owner=self.owner, location=child_child_location)
         # when
         qs = Blueprint.objects.annotate_location_name()
@@ -485,12 +483,10 @@ class TestBlueprintManagerAnnotateLocationName(NoSocketsTestCase):
     def test_should_return_parent_parent_parent_name(self):
         # given
         parent_location = LocationStationFactory(name="Parent")
-        child_location = LocationStationFactory(name="Child 1", parent=parent_location)
-        child_child_location = LocationStationFactory(
-            name="Child 2", parent=child_location
-        )
+        child_location = LocationStationFactory(name="", parent=parent_location)
+        child_child_location = LocationStationFactory(name="", parent=child_location)
         child_child_child_location = LocationStationFactory(
-            name="Child 3", parent=child_child_location
+            name="", parent=child_child_location
         )
         BlueprintFactory(owner=self.owner, location=child_child_child_location)
         # when
@@ -498,6 +494,33 @@ class TestBlueprintManagerAnnotateLocationName(NoSocketsTestCase):
         # then
         obj = qs.first()
         self.assertEqual(obj.location_name, "Parent")
+
+    def test_should_return_first_parent_with_name_with_4_nodes(self):
+        # given
+        parent_location = LocationStationFactory(name="Parent")
+        child_location = LocationStationFactory(name="Child", parent=parent_location)
+        child_child_location = LocationStationFactory(name="", parent=child_location)
+        child_child_child_location = LocationStationFactory(
+            name="", parent=child_child_location
+        )
+        BlueprintFactory(owner=self.owner, location=child_child_child_location)
+        # when
+        qs = Blueprint.objects.annotate_location_name()
+        # then
+        obj = qs.first()
+        self.assertEqual(obj.location_name, "Child")
+
+    def test_should_return_first_parent_with_name_with_3_nodes(self):
+        # given
+        parent_location = LocationStationFactory(name="Parent")
+        child_location = LocationStationFactory(name="Child", parent=parent_location)
+        child_child_location = LocationStationFactory(name="", parent=child_location)
+        BlueprintFactory(owner=self.owner, location=child_child_location)
+        # when
+        qs = Blueprint.objects.annotate_location_name()
+        # then
+        obj = qs.first()
+        self.assertEqual(obj.location_name, "Child")
 
 
 class TestLocationNamePlus(NoSocketsTestCase):
