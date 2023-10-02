@@ -1,8 +1,66 @@
 """Admin site for Blueprints."""
 
+from typing import Any
+
 from django.contrib import admin
+from django.db.models.query import QuerySet
+from django.http.request import HttpRequest
+from django.urls import reverse
+from django.utils.html import format_html
+from django.utils.translation import gettext_lazy as _
 
 from .models import Blueprint, IndustryJob, Location, Owner, Request
+
+
+class LocationNameListFilter(admin.SimpleListFilter):
+    title = _("location name")
+    parameter_name = "location_name"
+
+    def lookups(self, request, model_admin):
+        qs = model_admin.get_queryset(request)
+        return (
+            (obj, obj)
+            for obj in qs.values_list("location_name", flat=True)
+            .distinct()
+            .order_by("location_name")
+        )
+
+    def queryset(self, request, queryset):
+        if value := self.value():
+            return queryset.filter(location_name=value)
+
+
+class BpoListFilter(admin.SimpleListFilter):
+    title = _("is BPO")
+    parameter_name = "is_bpo"
+
+    def lookups(self, request, model_admin):
+        return (
+            ("yes", _("yes")),
+            ("no", _("no")),
+        )
+
+    def queryset(self, request, queryset):
+        if value := self.value():
+            return queryset.filter(is_bpo=value)
+
+
+class LocationFlagListFilter(admin.SimpleListFilter):
+    title = _("location flag")
+    parameter_name = "location_flag"
+
+    def lookups(self, request, model_admin):
+        qs = model_admin.get_queryset(request)
+        return (
+            (obj, obj)
+            for obj in qs.values_list("location_flag", flat=True)
+            .distinct()
+            .order_by("location_flag")
+        )
+
+    def queryset(self, request, queryset):
+        if value := self.value():
+            return queryset.filter(location_flag=value)
 
 
 @admin.register(Blueprint)
@@ -10,22 +68,52 @@ class BlueprintAdmin(admin.ModelAdmin):
     list_display = (
         "_type",
         "_owner",
-        "material_efficiency",
-        "time_efficiency",
+        "_location_name",
+        "location_flag",
+        "_material_efficiency",
+        "_time_efficiency",
         "_original",
     )
-
-    list_select_related = ("eve_type", "owner")
+    list_filter = [
+        "owner",
+        BpoListFilter,
+        LocationNameListFilter,
+        LocationFlagListFilter,
+        ("eve_type__eve_group", admin.RelatedOnlyFieldListFilter),
+    ]
     search_fields = ["eve_type__name"]
 
+    def get_queryset(self, request: HttpRequest) -> QuerySet[Any]:
+        qs = (
+            super()
+            .get_queryset(request)
+            .annotate_is_bpo()
+            .select_related("eve_type", "owner", "owner__corporation")
+        )
+        return qs.annotate_location_name()
+
+    @admin.display(ordering="eve_type__name")
     def _type(self, obj):
         return obj.eve_type.name if obj.eve_type else None
 
+    @admin.display(ordering="owner__name")
     def _owner(self, obj):
         return obj.owner.name
 
-    def _original(self, obj):
-        return "No" if obj.runs and obj.runs > 0 else "Yes"
+    @admin.display(ordering="is_bpo", boolean=True, description="BPO")
+    def _original(self, obj) -> bool:
+        return obj.is_bpo == "yes"
+
+    def _location_name(self, obj):
+        return obj.location_name
+
+    @admin.display(description="ME", ordering="material_efficiency")
+    def _material_efficiency(self, obj):
+        return obj.material_efficiency
+
+    @admin.display(description="TE", ordering="time_efficiency")
+    def _time_efficiency(self, obj):
+        return obj.time_efficiency
 
     def has_add_permission(self, request):
         return False
@@ -36,8 +124,17 @@ class BlueprintAdmin(admin.ModelAdmin):
 
 @admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):
-    list_display = ("id", "_name", "_type", "_group", "_solar_system", "updated_at")
+    list_display = (
+        "id",
+        "name",
+        "_type",
+        "_group",
+        "_solar_system",
+        "_parent",
+        "updated_at",
+    )
     list_filter = (
+        # ("parent", admin.RelatedOnlyFieldListFilter),
         (
             "eve_solar_system__eve_constellation__eve_region",
             admin.RelatedOnlyFieldListFilter,
@@ -46,36 +143,35 @@ class LocationAdmin(admin.ModelAdmin):
         ("eve_type__eve_group", admin.RelatedOnlyFieldListFilter),
     )
     search_fields = ["name"]
-    list_select_related = (
-        "eve_solar_system",
-        "eve_solar_system__eve_constellation__eve_region",
-        "eve_type",
-        "eve_type__eve_group",
-    )
 
-    def _name(self, obj):
-        if obj.name:
-            return obj.name
-        if obj.parent and obj.parent.name:
-            return "Child of " + obj.parent.name
-        return None
+    def get_queryset(self, request: HttpRequest) -> QuerySet[Any]:
+        qs = super().get_queryset(request)
+        return qs.select_related(
+            "eve_solar_system",
+            "eve_solar_system__eve_constellation__eve_region",
+            "eve_type",
+            "eve_type__eve_group",
+            "parent",
+            "parent__eve_type",
+        )
 
-    _name.admin_order_field = "name"
-
-    def _solar_system(self, obj):
+    @admin.display(ordering="eve_solar_system__name")
+    def _solar_system(self, obj: Location):
         return obj.eve_solar_system.name if obj.eve_solar_system else None
 
-    _solar_system.admin_order_field = "eve_solar_system__name"
-
-    def _type(self, obj):
+    @admin.display(ordering="eve_type__name")
+    def _type(self, obj: Location):
         return obj.eve_type.name if obj.eve_type else None
 
-    _type.admin_order_field = "eve_type__name"
-
-    def _group(self, obj):
+    @admin.display(ordering="eve_type__eve_group__name")
+    def _group(self, obj: Location):
         return obj.eve_type.eve_group.name if obj.eve_type else None
 
-    _group.admin_order_field = "eve_type__eve_group__name"
+    def _parent(self, obj: Location):
+        if not obj.parent:
+            return None
+        url = reverse("admin:blueprints_location_change", args=(obj.parent.id,))
+        return format_html('<a href="{}">{}</a>', url, obj.parent)
 
     def has_add_permission(self, request):
         return False

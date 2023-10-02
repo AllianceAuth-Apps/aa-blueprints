@@ -7,6 +7,17 @@ and this project adheres to [PEP-440](https://www.python.org/dev/peps/pep-0440/)
 
 ## [Unreleased]
 
+## [1.5.1] - 2023-10-02
+
+### Changed
+
+- Now shoes full qualified name for blueprint location in info window
+- Show more information and filters on admin site
+
+### Fixed
+
+- Does not show blueprints in containers when filtering by location
+
 ## [1.5.0] - 2023-10-01
 
 ### Added

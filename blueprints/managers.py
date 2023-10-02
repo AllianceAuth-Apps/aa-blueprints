@@ -54,12 +54,26 @@ class BlueprintQuerySet(models.QuerySet):
         """Annotate calculated location name field."""
         return self.annotate(
             location_name=Case(
+                When(
+                    ~Q(location__parent=None)
+                    & ~Q(location__parent__parent=None)
+                    & ~Q(location__parent__parent__parent=None)
+                    & ~Q(location__parent__parent__parent__name=""),
+                    then=F("location__parent__parent__parent__name"),
+                ),
+                When(
+                    ~Q(location__parent=None)
+                    & ~Q(location__parent__parent=None)
+                    & ~Q(location__parent__parent__name=""),
+                    then=F("location__parent__parent__name"),
+                ),
+                When(
+                    ~Q(location__parent=None) & ~Q(location__parent__name=""),
+                    then=F("location__parent__name"),
+                ),
                 When(~Q(location__name=""), then=F("location__name")),
-                When(~Q(location__parent=None), then=F("location__parent__name")),
                 default=Concat(
-                    Value("Unknown location "),
-                    "location__id",
-                    output_field=models.CharField(),
+                    Value("Location #"), "location__id", output_field=models.CharField()
                 ),
                 output_field=models.CharField(),
             )
@@ -94,32 +108,19 @@ class BlueprintManagerBase(models.Manager):
             )
             if owner.character.character.corporation_id in corporation_ids
         ]
-        blueprints_query = (
-            self.filter(
-                Q(owner__corporation__corporation_id__in=corporation_ids)
-                | Q(owner__pk__in=personal_owner_ids)
-            )
-            .select_related(
-                "eve_type",
-                "location",
-                "industryjob",
-                "owner",
-                "owner__corporation",
-                "owner__character",
-                "location",
-                "location__eve_solar_system",
-                "location__eve_type",
-            )
-            .annotate(
-                location__name_plus=Case(
-                    When(
-                        Q(location__name="") & ~Q(location__parent=None),
-                        then=F("location__parent__name"),
-                    ),
-                    default=F("location__name"),
-                    output_field=models.CharField(),
-                )
-            )
+        blueprints_query = self.filter(
+            Q(owner__corporation__corporation_id__in=corporation_ids)
+            | Q(owner__pk__in=personal_owner_ids)
+        ).select_related(
+            "eve_type",
+            "location",
+            "industryjob",
+            "owner",
+            "owner__corporation",
+            "owner__character",
+            "location",
+            "location__eve_solar_system",
+            "location__eve_type",
         )
         return blueprints_query
 
