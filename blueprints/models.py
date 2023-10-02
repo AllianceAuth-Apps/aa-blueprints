@@ -132,6 +132,7 @@ class Owner(models.Model):
         for asset in assets:
             asset_ids.append(asset["item_id"])
             assets_by_id[asset["item_id"]] = asset
+
         for asset in assets:
             if asset["location_id"] in asset_ids:
                 location_id = asset["location_id"]
@@ -139,6 +140,7 @@ class Owner(models.Model):
                     asset_locations[location_id].append(asset["item_id"])
                 else:
                     asset_locations[location_id] = [asset["item_id"]]
+
         for location in list(asset_locations.keys()):
             if not Location.objects.filter(id=location).count() > 0:
                 parent_location = assets_by_id[location]["location_id"]
@@ -595,19 +597,14 @@ class Location(models.Model):
         default_permissions = ()
 
     def __str__(self) -> str:
-        return self.name_plus + f" [id={self.id}]"
+        if self.name:
+            return self.name
+        if self.eve_type:
+            return str(self.eve_type)
+        return f"Location #{self.id}"
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(id={self.id}, name='{self.name}')"
-
-    @property
-    def name_plus(self) -> str:
-        """return the actual name or 'Unknown location' for empty locations"""
-        if self.name:
-            return self.name
-        if self.parent:
-            return self.parent.name_plus
-        return f"Unknown location {self.id}"
 
     @property
     def is_empty(self) -> bool:
@@ -644,6 +641,12 @@ class Location(models.Model):
     @classmethod
     def is_structure_id(cls, location_id: int) -> bool:
         return location_id >= cls._STRUCTURE_ID_START
+
+    def full_qualified_name(self) -> str:
+        """Return the full qualified name of this location."""
+        if self.parent:
+            return f"{self.parent.full_qualified_name()} - {str(self)}"
+        return str(self)
 
 
 class Request(models.Model):

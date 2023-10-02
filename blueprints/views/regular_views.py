@@ -221,7 +221,7 @@ def convert_blueprint(blueprint: Blueprint, user, details=False) -> dict:
         owner_type = "character"
 
     if user.has_perm("blueprints.view_blueprint_locations"):
-        location = blueprint.location.name_plus
+        location = blueprint.location.full_qualified_name()
     else:
         location = gettext_lazy("(Unknown)")
     summary = {
@@ -391,7 +391,7 @@ def convert_request(request: Request, user) -> dict:
         owner_type = "character"
 
     if user.has_perm("blueprints.view_blueprint_locations"):
-        location = request.blueprint.location.name_plus
+        location = request.blueprint.location.full_qualified_name()
     else:
         location = gettext_lazy("(Unknown)")
 
