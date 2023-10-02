@@ -164,7 +164,7 @@ class Owner(models.Model):
 
         if self.is_active:
             blueprint_ids_to_remove = list(
-                Blueprint.objects.filter(owner=self).values_list("item_id", flat=True)
+                self.blueprints.values_list("item_id", flat=True)
             )
             if self.corporation:
                 blueprints = self._fetch_corporate_blueprints()
@@ -190,9 +190,7 @@ class Owner(models.Model):
                 quantity = blueprint["quantity"]
                 if quantity < 0:
                     quantity = 1
-                original = Blueprint.objects.filter(
-                    owner=self, item_id=blueprint["item_id"]
-                ).first()
+                original = self.blueprints.filter(item_id=blueprint["item_id"]).first()
 
                 location_flag = Blueprint.LocationFlag.from_esi_data(
                     blueprint["location_flag"]
@@ -213,8 +211,7 @@ class Owner(models.Model):
                     original.quantity = quantity
                     original.save()
                 else:
-                    Blueprint.objects.create(
-                        owner=self,
+                    self.blueprints.create(
                         location=self._fetch_location(
                             blueprint["location_id"], token=token
                         ),
