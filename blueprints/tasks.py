@@ -54,7 +54,7 @@ TASK_ESI_KWARGS = {
 def update_blueprints_for_owner(self, owner_pk):
     """fetches all blueprints for owner from ESI"""
     owner = Owner.objects.get(pk=owner_pk)
-    return owner.update_blueprints_esi()
+    owner.update_blueprints_esi()
 
 
 @shared_task(
@@ -70,7 +70,7 @@ def update_blueprints_for_owner(self, owner_pk):
 def update_industry_jobs_for_owner(self, owner_pk):
     """fetches all industry jobs for owner from ESI"""
     owner = Owner.objects.get(pk=owner_pk)
-    return owner.update_industry_jobs_esi()
+    owner.update_industry_jobs_esi()
 
 
 @shared_task(
@@ -86,7 +86,7 @@ def update_industry_jobs_for_owner(self, owner_pk):
 def update_locations_for_owner(self, owner_pk):
     """fetches all blueprints for owner from ESI"""
     owner = Owner.objects.get(pk=owner_pk)
-    return owner.update_locations_esi()
+    owner.update_locations_esi()
 
 
 @shared_task(**TASK_DEFAULT_KWARGS)

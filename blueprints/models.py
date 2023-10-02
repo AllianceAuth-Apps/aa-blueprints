@@ -141,23 +141,13 @@ class Owner(models.Model):
                     asset_locations[location_id] = [asset["item_id"]]
 
         for location in list(asset_locations.keys()):
-            if not Location.objects.filter(id=location).count() > 0:
-                parent_location = assets_by_id[location]["location_id"]
-                Location.objects.create(
-                    id=location,
-                    parent=self._fetch_location(parent_location, token=token),
-                    eve_type=EveType.objects.filter(
-                        id=assets_by_id[location]["type_id"]
-                    ).first(),
-                )
-            else:
-                parent_location = assets_by_id[location]["location_id"]
-                location_obj = Location.objects.filter(id=location).first()
-                if location_obj:
-                    location_obj.parent = self._fetch_location(
-                        parent_location, token=token
-                    )
-                    location_obj.save()
+            asset = assets_by_id[location]
+            parent_location = asset["location_id"]
+            parent = self._fetch_location(parent_location, token=token)
+            eve_type, _ = EveType.objects.get_or_create_esi(id=asset["type_id"])
+            Location.objects.update_or_create(
+                id=location, defaults={"parent": parent, "eve_type": eve_type}
+            )
 
     def update_blueprints_esi(self):
         """updates all blueprints from ESI"""
