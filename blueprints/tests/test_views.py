@@ -113,7 +113,7 @@ class TestBlueprintsData(_TestCaseWithTestData):
         self.assertEqual(row["name"], "Lexcorp")
         self.assertEqual(row["type"], "corporate")
 
-    @patch(VIEWS_PATH + ".messages_plus")
+    @patch(VIEWS_PATH + ".messages")
     def test_remove_owner(self, mock_messages):
         request = self.factory.post(
             reverse("blueprints:remove_owner", args=[self.owner.pk])
@@ -222,7 +222,7 @@ class TestRequestWorkflow(_TestCaseWithTestData):
     def setUpClass(cls) -> None:
         super().setUpClass()
 
-    @patch(VIEWS_PATH + ".messages_plus")
+    @patch(VIEWS_PATH + ".messages")
     def test_should_create_new_request(self, mock_messages):
         # given
         self.client.force_login(self.user_requestor)
@@ -240,7 +240,7 @@ class TestRequestWorkflow(_TestCaseWithTestData):
         self.assertEqual(notification_count(self.user_owner), 1)
         self.assertEqual(notification_count(self.user_other_approver), 1)
 
-    @patch(VIEWS_PATH + ".messages_plus")
+    @patch(VIEWS_PATH + ".messages")
     def test_should_mark_request_cancelled_by_requestor(self, mock_messages):
         # given
         user_request = Request.objects.create(
@@ -262,7 +262,7 @@ class TestRequestWorkflow(_TestCaseWithTestData):
         self.assertEqual(notification_count(self.user_owner), 1)
         self.assertEqual(notification_count(self.user_other_approver), 1)
 
-    @patch(VIEWS_PATH + ".messages_plus")
+    @patch(VIEWS_PATH + ".messages")
     def test_should_mark_request_as_in_progress(self, mock_messages):
         # given
         user_request = Request.objects.create(
@@ -285,7 +285,7 @@ class TestRequestWorkflow(_TestCaseWithTestData):
         self.assertEqual(notification_count(self.user_owner), 0)
         self.assertEqual(notification_count(self.user_other_approver), 1)
 
-    @patch(VIEWS_PATH + ".messages_plus")
+    @patch(VIEWS_PATH + ".messages")
     def test_should_mark_request_as_fulfilled(self, mock_messages):
         # given
         user_request = Request.objects.create(
@@ -307,7 +307,7 @@ class TestRequestWorkflow(_TestCaseWithTestData):
         self.assertEqual(notification_count(self.user_owner), 0)
         self.assertEqual(notification_count(self.user_other_approver), 0)
 
-    @patch(VIEWS_PATH + ".messages_plus")
+    @patch(VIEWS_PATH + ".messages")
     def test_should_mark_request_as_cancelled_by_owner(self, mock_messages):
         # given
         user_request = Request.objects.create(
@@ -329,7 +329,7 @@ class TestRequestWorkflow(_TestCaseWithTestData):
         self.assertEqual(notification_count(self.user_owner), 0)
         self.assertEqual(notification_count(self.user_other_approver), 1)
 
-    @patch(VIEWS_PATH + ".messages_plus")
+    @patch(VIEWS_PATH + ".messages")
     def test_should_mark_request_as_reopened(self, mock_messages):
         # given
         user_request = Request.objects.create(
@@ -404,7 +404,7 @@ class TestOtherViews(_TestCaseWithTestData):
 @patch(VIEWS_PATH + ".tasks.update_locations_for_owner")
 @patch(VIEWS_PATH + ".tasks.update_blueprints_for_owner")
 @patch(VIEWS_PATH + ".notify_admins")
-@patch(VIEWS_PATH + ".messages_plus")
+@patch(VIEWS_PATH + ".messages")
 class TestAddCorporationBlueprintOwner(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -486,7 +486,7 @@ class TestAddCorporationBlueprintOwner(TestCase):
 @patch(VIEWS_PATH + ".tasks.update_locations_for_owner")
 @patch(VIEWS_PATH + ".tasks.update_blueprints_for_owner")
 @patch(VIEWS_PATH + ".notify_admins")
-@patch(VIEWS_PATH + ".messages_plus")
+@patch(VIEWS_PATH + ".messages")
 class TestAddPersonalBlueprintOwner(TestCase):
     @classmethod
     def setUpClass(cls) -> None:

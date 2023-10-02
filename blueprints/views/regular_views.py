@@ -1,5 +1,6 @@
 """Regular views for Blueprints."""
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import Count
@@ -18,7 +19,6 @@ from allianceauth.eveonline.models import EveCharacter, EveCorporationInfo
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.allianceauth import notify_admins
 from app_utils.logging import LoggerAddTag
-from app_utils.messages import messages_plus
 
 from blueprints import __title__, tasks
 from blueprints.app_settings import (
@@ -66,7 +66,7 @@ def add_corporate_blueprint_owner(request, token):
             user=request.user, character=token_char
         )
     except CharacterOwnership.DoesNotExist:
-        messages_plus.error(
+        messages.error(
             request,
             format_html(
                 gettext_lazy(
@@ -98,7 +98,7 @@ def add_corporate_blueprint_owner(request, token):
 
         tasks.update_blueprints_for_owner.delay(owner_pk=owner.pk)
         tasks.update_locations_for_owner.delay(owner_pk=owner.pk)
-        messages_plus.info(
+        messages.info(
             request,
             format_html(
                 gettext_lazy(
@@ -147,7 +147,7 @@ def add_personal_blueprint_owner(request, token):
             user=request.user, character=token_char
         )
     except CharacterOwnership.DoesNotExist:
-        messages_plus.error(
+        messages.error(
             request,
             format_html(
                 gettext_lazy(
@@ -171,7 +171,7 @@ def add_personal_blueprint_owner(request, token):
 
         tasks.update_blueprints_for_owner.delay(owner_pk=owner.pk)
         tasks.update_locations_for_owner.delay(owner_pk=owner.pk)
-        messages_plus.info(
+        messages.info(
             request,
             format_html(
                 gettext_lazy(
@@ -366,7 +366,7 @@ def create_request(request):
             runs=runs,
         )
         user_request.notify_new_request()
-        messages_plus.info(
+        messages.info(
             request,
             format_html(
                 gettext_lazy("A copy of %(blueprint)s has been requested.")
@@ -488,7 +488,7 @@ def mark_request_fulfilled(request, request_id):
     )
     if completed:
         user_request.notify_request_fulfilled()
-        messages_plus.info(
+        messages.info(
             request,
             format_html(
                 gettext_lazy(
@@ -498,7 +498,7 @@ def mark_request_fulfilled(request, request_id):
             ),
         )
     else:
-        messages_plus.error(
+        messages.error(
             request,
             format_html(
                 gettext_lazy("Fulfilling the request for %(blueprint)s has failed.")
@@ -517,7 +517,7 @@ def mark_request_in_progress(request, request_id):
     )
     if completed:
         user_request.notify_request_in_progress()
-        messages_plus.info(
+        messages.info(
             request,
             format_html(
                 gettext_lazy(
@@ -527,7 +527,7 @@ def mark_request_in_progress(request, request_id):
             ),
         )
     else:
-        messages_plus.error(
+        messages.error(
             request,
             format_html(
                 gettext_lazy(
@@ -548,7 +548,7 @@ def mark_request_open(request, request_id):
     )
     if completed:
         user_request.notify_request_reopened(request.user)
-        messages_plus.info(
+        messages.info(
             request,
             format_html(
                 gettext_lazy("The request for %(blueprint)s has been re-opened.")
@@ -556,7 +556,7 @@ def mark_request_open(request, request_id):
             ),
         )
     else:
-        messages_plus.error(
+        messages.error(
             request,
             format_html(
                 gettext_lazy("Re-opening the request for %(blueprint)s has failed.")
@@ -583,7 +583,7 @@ def mark_request_cancelled(request, request_id):
             user_request.notify_request_canceled_by_requestor()
         else:
             user_request.notify_request_canceled_by_approver(request.user)
-        messages_plus.info(
+        messages.info(
             request,
             format_html(
                 gettext_lazy(
@@ -593,7 +593,7 @@ def mark_request_cancelled(request, request_id):
             ),
         )
     else:
-        messages_plus.error(
+        messages.error(
             request,
             format_html(
                 gettext_lazy("Cancelling the request for %(blueprint)s has failed.")
@@ -624,7 +624,7 @@ def remove_owner(request, owner_id):
         completed = True
 
     if completed:
-        messages_plus.info(
+        messages.info(
             request,
             format_html(
                 gettext_lazy("%(owner)s has been removed as a blueprint owner.")
@@ -632,7 +632,7 @@ def remove_owner(request, owner_id):
             ),
         )
     else:
-        messages_plus.error(
+        messages.error(
             request,
             format_html(gettext_lazy("Removing the blueprint owner has failed.")),
         )
