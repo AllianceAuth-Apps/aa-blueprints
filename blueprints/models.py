@@ -106,9 +106,21 @@ class Owner(models.Model):
         try:
             if self.corporation:
                 return self.corporation.corporation_name
-            return self.character.character.character_name
-        except AttributeError:
+            return self.eve_character_strict.character_name
+        except (ValueError, AttributeError):
             return ""
+
+    @property
+    def corporation_strict(self) -> EveCorporationInfo:
+        if not self.corporation:
+            raise ValueError("No corporation defined")
+        return self.corporation
+
+    @property
+    def eve_character_strict(self) -> EveCharacter:
+        if not self.character or not self.character.character:
+            raise ValueError("No character defined")
+        return self.character.character
 
     def update_locations_esi(self):
         if self.corporation:
@@ -283,53 +295,45 @@ class Owner(models.Model):
     @fetch_token_for_owner(["esi-assets.read_corporation_assets.v1"])
     def _fetch_corporate_assets(self, token) -> list:
         return esi.client.Assets.get_corporations_corporation_id_assets(
-            corporation_id=self.corporation.corporation_id,
+            corporation_id=self.corporation_strict.corporation_id,
             token=token.valid_access_token(),
         ).results()
 
     @fetch_token_for_owner(["esi-assets.read_assets.v1"])
     def _fetch_personal_assets(self, token) -> list:
         return esi.client.Assets.get_characters_character_id_assets(
-            character_id=self.character.character.character_id,
+            character_id=self.eve_character_strict.character_id,
             token=token.valid_access_token(),
         ).results()
 
     @fetch_token_for_owner(["esi-corporations.read_blueprints.v1"])
     def _fetch_corporate_blueprints(self, token) -> list:
-        corporation_id = self.corporation.corporation_id
-
         blueprints = esi.client.Corporation.get_corporations_corporation_id_blueprints(
-            corporation_id=corporation_id,
+            corporation_id=self.corporation_strict.corporation_id,
             token=token.valid_access_token(),
         ).results()
         return blueprints
 
     @fetch_token_for_owner(["esi-characters.read_blueprints.v1"])
     def _fetch_personal_blueprints(self, token) -> list:
-        character_id = self.character.character.character_id
-
         blueprints = esi.client.Character.get_characters_character_id_blueprints(
-            character_id=character_id,
+            character_id=self.eve_character_strict.character_id,
             token=token.valid_access_token(),
         ).results()
         return blueprints
 
     @fetch_token_for_owner(["esi-industry.read_corporation_jobs.v1"])
     def _fetch_corporate_industry_jobs(self, token) -> list:
-        corporation_id = self.corporation.corporation_id
-
         jobs = esi.client.Industry.get_corporations_corporation_id_industry_jobs(
-            corporation_id=corporation_id,
+            corporation_id=self.corporation_strict.corporation_id,
             token=token.valid_access_token(),
         ).results()
         return jobs
 
     @fetch_token_for_owner(["esi-industry.read_character_jobs.v1"])
     def _fetch_personal_industry_jobs(self, token) -> list:
-        character_id = self.character.character.character_id
-
         jobs = esi.client.Industry.get_characters_character_id_industry_jobs(
-            character_id=character_id,
+            character_id=self.eve_character_strict.character_id,
             token=token.valid_access_token(),
         ).results()
         return jobs
@@ -373,7 +377,7 @@ class Owner(models.Model):
                 token = (
                     Token.objects.filter(
                         user=self.character.user,
-                        character_id=self.character.character.character_id,
+                        character_id=self.eve_character_strict.character_id,
                     )
                     .require_scopes(scopes)
                     .require_valid()
@@ -398,8 +402,8 @@ class Owner(models.Model):
     def _logger_prefix(self):
         """returns standard logger prefix function"""
         if self.corporation:
-            return make_logger_prefix(self.corporation.corporation_ticker)
-        return make_logger_prefix(self.character.character.character_name)
+            return make_logger_prefix(self.corporation_strict.corporation_ticker)
+        return make_logger_prefix(self.eve_character_strict.character_name)
 
 
 class Blueprint(models.Model):
