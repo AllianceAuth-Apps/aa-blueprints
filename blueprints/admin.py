@@ -52,7 +52,7 @@ class LocationFlagListFilter(admin.SimpleListFilter):
     def lookups(self, request, model_admin):
         qs = model_admin.get_queryset(request)
         return (
-            (obj, obj)
+            (obj, Blueprint.LocationFlag(obj).label)
             for obj in qs.values_list("location_flag", flat=True)
             .distinct()
             .order_by("location_flag")
