@@ -91,7 +91,7 @@ def update_locations_for_owner(self, owner_pk):
 
 @shared_task(**TASK_DEFAULT_KWARGS)
 def update_all_blueprints():
-    for owner in Owner.objects.all():
+    for owner in Owner.objects.filter(is_active=True):
         update_blueprints_for_owner.apply_async(
             kwargs={"owner_pk": owner.pk}, priority=DEFAULT_TASK_PRIORITY
         )
@@ -99,7 +99,7 @@ def update_all_blueprints():
 
 @shared_task(**TASK_DEFAULT_KWARGS)
 def update_all_industry_jobs():
-    for owner in Owner.objects.all():
+    for owner in Owner.objects.filter(is_active=True):
         update_industry_jobs_for_owner.apply_async(
             kwargs={"owner_pk": owner.pk}, priority=DEFAULT_TASK_PRIORITY
         )
@@ -107,7 +107,7 @@ def update_all_industry_jobs():
 
 @shared_task(**TASK_DEFAULT_KWARGS)
 def update_all_locations():
-    for owner in Owner.objects.all():
+    for owner in Owner.objects.filter(is_active=True):
         update_locations_for_owner.apply_async(
             kwargs={"owner_pk": owner.pk}, priority=DEFAULT_TASK_PRIORITY
         )

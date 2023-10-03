@@ -139,70 +139,70 @@ class Owner(models.Model):
             )
 
     def update_blueprints_esi(self):
-        """updates all blueprints from ESI"""
+        """Update all blueprints from ESI."""
 
-        if self.is_active:
-            blueprint_ids_to_remove = list(
-                self.blueprints.values_list("item_id", flat=True)
+        blueprint_ids_to_remove = list(
+            self.blueprints.values_list("item_id", flat=True)
+        )
+        if self.corporation:
+            blueprints = self._fetch_corporate_blueprints()
+            token = self.valid_token(
+                [
+                    "esi-universe.read_structures.v1",
+                    "esi-corporations.read_blueprints.v1",
+                ]
             )
-            if self.corporation:
-                blueprints = self._fetch_corporate_blueprints()
-                token = self.valid_token(
-                    [
-                        "esi-universe.read_structures.v1",
-                        "esi-corporations.read_blueprints.v1",
-                    ]
+        else:
+            blueprints = self._fetch_personal_blueprints()
+            token = self.valid_token(
+                [
+                    "esi-universe.read_structures.v1",
+                    "esi-characters.read_blueprints.v1",
+                ]
+            )
+
+        for blueprint in blueprints:
+            runs = blueprint["runs"]
+            if runs < 1:
+                runs = None
+            quantity = blueprint["quantity"]
+            if quantity < 0:
+                quantity = 1
+            original = self.blueprints.filter(item_id=blueprint["item_id"]).first()
+
+            location_flag = Blueprint.LocationFlag.from_esi_data(
+                blueprint["location_flag"]
+            )
+            eve_type, _ = EveType.objects.get_or_create_esi(id=blueprint["type_id"])
+            if original is not None:
+                # We've seen this blueprint coming from ESI, so we know it shouldn't be deleted
+                blueprint_ids_to_remove.remove(original.item_id)
+                original.location = self._fetch_location(
+                    blueprint["location_id"],
+                    token=token,
                 )
+                original.location_flag = location_flag
+                original.eve_type = eve_type
+                original.runs = runs
+                original.material_efficiency = blueprint["material_efficiency"]
+                original.time_efficiency = blueprint["time_efficiency"]
+                original.quantity = quantity
+                original.save()
             else:
-                blueprints = self._fetch_personal_blueprints()
-                token = self.valid_token(
-                    [
-                        "esi-universe.read_structures.v1",
-                        "esi-characters.read_blueprints.v1",
-                    ]
+                self.blueprints.create(
+                    location=self._fetch_location(
+                        blueprint["location_id"], token=token
+                    ),
+                    location_flag=location_flag,
+                    eve_type=eve_type,
+                    item_id=blueprint["item_id"],
+                    runs=runs,
+                    material_efficiency=blueprint["material_efficiency"],
+                    time_efficiency=blueprint["time_efficiency"],
+                    quantity=quantity,
                 )
 
-            for blueprint in blueprints:
-                runs = blueprint["runs"]
-                if runs < 1:
-                    runs = None
-                quantity = blueprint["quantity"]
-                if quantity < 0:
-                    quantity = 1
-                original = self.blueprints.filter(item_id=blueprint["item_id"]).first()
-
-                location_flag = Blueprint.LocationFlag.from_esi_data(
-                    blueprint["location_flag"]
-                )
-                eve_type, _ = EveType.objects.get_or_create_esi(id=blueprint["type_id"])
-                if original is not None:
-                    # We've seen this blueprint coming from ESI, so we know it shouldn't be deleted
-                    blueprint_ids_to_remove.remove(original.item_id)
-                    original.location = self._fetch_location(
-                        blueprint["location_id"],
-                        token=token,
-                    )
-                    original.location_flag = location_flag
-                    original.eve_type = eve_type
-                    original.runs = runs
-                    original.material_efficiency = blueprint["material_efficiency"]
-                    original.time_efficiency = blueprint["time_efficiency"]
-                    original.quantity = quantity
-                    original.save()
-                else:
-                    self.blueprints.create(
-                        location=self._fetch_location(
-                            blueprint["location_id"], token=token
-                        ),
-                        location_flag=location_flag,
-                        eve_type=eve_type,
-                        item_id=blueprint["item_id"],
-                        runs=runs,
-                        material_efficiency=blueprint["material_efficiency"],
-                        time_efficiency=blueprint["time_efficiency"],
-                        quantity=quantity,
-                    )
-            Blueprint.objects.filter(pk__in=blueprint_ids_to_remove).delete()
+        Blueprint.objects.filter(pk__in=blueprint_ids_to_remove).delete()
 
     def update_industry_jobs_esi(self):
         """updates all blueprints from ESI"""

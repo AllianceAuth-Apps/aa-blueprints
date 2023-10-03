@@ -183,6 +183,7 @@ class LocationAdmin(admin.ModelAdmin):
 @admin.register(Owner)
 class OwnerAdmin(admin.ModelAdmin):
     list_display = ("character", "_type", "corporation", "is_active")
+    actions = ["activate_owners", "deactivate_owners"]
 
     def _type(self, obj):
         return "Corporate" if obj.corporation else "Personal"
@@ -192,6 +193,14 @@ class OwnerAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+    @admin.action(description="Activate selected owners")
+    def activate_owners(self, request, queryset):
+        queryset.update(is_active=True)
+
+    @admin.action(description="Deactivate selected owners")
+    def deactivate_owners(self, request, queryset):
+        queryset.update(is_active=False)
 
 
 @admin.register(Request)
