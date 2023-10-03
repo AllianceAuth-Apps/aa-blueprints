@@ -3,6 +3,8 @@ from unittest.mock import patch
 
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import now
+from esi.errors import TokenError, TokenExpiredError
+from esi.models import Token
 from eveuniverse.models import EveType
 
 from allianceauth.eveonline.models import EveCharacter, EveCorporationInfo
@@ -560,3 +562,29 @@ class TestLocationNamePlus(NoSocketsTestCase):
         self.assertEqual(
             location.full_qualified_name(), "Parent - Child 1 - Child 2 - Child 3"
         )
+
+
+class TestOwnerValidToken(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.owner = OwnerFactory()
+
+    def test_should_return_valid_token(self):
+        # when
+        result = self.owner.valid_token(["esi-characters.read_blueprints.v1"])
+        # then
+        self.assertIsInstance(result, Token)
+
+    def test_should_raise_error_when_no_token_with_requested_scope_found(self):
+        # when/then
+        with self.assertRaises(TokenError):
+            self.owner.valid_token(["unknown-scope"])
+
+    @patch(MODELS_PATH + ".Token.objects.filter")
+    def test_should_raise_error_when_token_has_issue(self, mock):
+        # given
+        mock.side_effect = TokenExpiredError
+        # when/then
+        with self.assertRaises(TokenExpiredError):
+            self.owner.valid_token(["esi-characters.read_blueprints.v1"])

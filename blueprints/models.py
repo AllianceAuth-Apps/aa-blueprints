@@ -1,11 +1,11 @@
 """Models for Blueprints."""
 
-from typing import List, Tuple
+from typing import List
 
 from django.contrib.auth.models import Permission, User
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from esi.errors import TokenExpiredError, TokenInvalidError
+from esi.errors import TokenError
 from esi.models import Token
 from eveuniverse.models import EveEntity, EveSolarSystem, EveType
 
@@ -15,7 +15,7 @@ from allianceauth.eveonline.models import EveCharacter, EveCorporationInfo
 from allianceauth.notifications import notify
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.django import users_with_permission
-from app_utils.logging import LoggerAddTag, make_logger_prefix
+from app_utils.logging import LoggerAddTag
 
 from . import __title__
 from .decorators import fetch_token_for_owner
@@ -48,29 +48,6 @@ class General(models.Model):
 
 class Owner(models.Model):
     """A corporation that owns blueprints"""
-
-    ERROR_NONE = 0
-    ERROR_TOKEN_INVALID = 1
-    ERROR_TOKEN_EXPIRED = 2
-    ERROR_INSUFFICIENT_PERMISSIONS = 3
-    ERROR_NO_CHARACTER = 4
-    ERROR_ESI_UNAVAILABLE = 5
-    ERROR_OPERATION_MODE_MISMATCH = 6
-    ERROR_UNKNOWN = 99
-
-    ERRORS_LIST = [
-        (ERROR_NONE, "No error"),
-        (ERROR_TOKEN_INVALID, "Invalid token"),
-        (ERROR_TOKEN_EXPIRED, "Expired token"),
-        (ERROR_INSUFFICIENT_PERMISSIONS, "Insufficient permissions"),
-        (ERROR_NO_CHARACTER, "No character set for fetching data from ESI"),
-        (ERROR_ESI_UNAVAILABLE, "ESI API is currently unavailable"),
-        (
-            ERROR_OPERATION_MODE_MISMATCH,
-            "Operaton mode does not match with current setting",
-        ),
-        (ERROR_UNKNOWN, "Unknown error"),
-    ]
 
     corporation = models.OneToOneField(
         EveCorporationInfo,
@@ -125,17 +102,17 @@ class Owner(models.Model):
     def update_locations_esi(self):
         if self.corporation:
             assets = self._fetch_corporate_assets()
-            token = self.token(
+            token = self.valid_token(
                 [
                     "esi-universe.read_structures.v1",
                     "esi-assets.read_corporation_assets.v1",
                 ]
-            )[0]
+            )
         else:
             assets = self._fetch_personal_assets()
-            token = self.token(
+            token = self.valid_token(
                 ["esi-universe.read_structures.v1", "esi-assets.read_assets.v1"]
-            )[0]
+            )
 
         asset_ids = []
         asset_locations = {}
@@ -170,20 +147,20 @@ class Owner(models.Model):
             )
             if self.corporation:
                 blueprints = self._fetch_corporate_blueprints()
-                token = self.token(
+                token = self.valid_token(
                     [
                         "esi-universe.read_structures.v1",
                         "esi-corporations.read_blueprints.v1",
                     ]
-                )[0]
+                )
             else:
                 blueprints = self._fetch_personal_blueprints()
-                token = self.token(
+                token = self.valid_token(
                     [
                         "esi-universe.read_structures.v1",
                         "esi-characters.read_blueprints.v1",
                     ]
-                )[0]
+                )
 
             for blueprint in blueprints:
                 runs = blueprint["runs"]
@@ -236,20 +213,20 @@ class Owner(models.Model):
             )
             if self.corporation:
                 jobs = self._fetch_corporate_industry_jobs()
-                token = self.token(
+                token = self.valid_token(
                     [
                         "esi-universe.read_structures.v1",
                         "esi-industry.read_corporation_jobs.v1",
                     ]
-                )[0]
+                )
             else:
                 jobs = self._fetch_personal_industry_jobs()
-                token = self.token(
+                token = self.valid_token(
                     [
                         "esi-universe.read_structures.v1",
                         "esi-industry.read_character_jobs.v1",
                     ]
-                )[0]
+                )
 
             for job in jobs:
                 original = IndustryJob.objects.filter(
@@ -338,72 +315,24 @@ class Owner(models.Model):
         ).results()
         return jobs
 
-    def token(self, scopes=None) -> Tuple[Token, int]:
-        """returns a valid Token for the owner"""
-        token = None
-        error = None
-        add_prefix = self._logger_prefix()
-
-        # abort if character is not configured
-        if self.character is None:
-            logger.error(add_prefix("No character configured to sync"))
-            error = self.ERROR_NO_CHARACTER
-
-        # abort if character does not have sufficient permissions
-        elif self.corporation and not self.character.user.has_perm(
-            "blueprints.add_corporate_blueprint_owner"
-        ):
-            logger.error(
-                add_prefix(
-                    "This character does not have sufficient permission to sync corporations"
-                )
+    def valid_token(self, scopes) -> Token:
+        """Return a valid token for the owner or raise exception."""
+        token = (
+            Token.objects.filter(
+                user=self.character.user,
+                character_id=self.eve_character_strict.character_id,
             )
-            error = self.ERROR_INSUFFICIENT_PERMISSIONS
+            .require_scopes(scopes)
+            .require_valid()
+            .first()
+        )
+        if not token:
+            raise TokenError(f"{self}: No valid token found with sufficient scopes")
 
-        # abort if character does not have sufficient permissions
-        elif not self.character.user.has_perm(
-            "blueprints.add_personal_blueprint_owner"
-        ):
-            logger.error(
-                add_prefix(
-                    "This character does not have sufficient permission to sync personal blueprints"
-                )
-            )
-            error = self.ERROR_INSUFFICIENT_PERMISSIONS
-
-        else:
-            try:
-                # get token
-                token = (
-                    Token.objects.filter(
-                        user=self.character.user,
-                        character_id=self.eve_character_strict.character_id,
-                    )
-                    .require_scopes(scopes)
-                    .require_valid()
-                    .first()
-                )
-            except TokenInvalidError:
-                logger.error(add_prefix("Invalid token for fetching blueprints"))
-                error = self.ERROR_TOKEN_INVALID
-            except TokenExpiredError:
-                logger.error(add_prefix("Token expired for fetching blueprints"))
-                error = self.ERROR_TOKEN_EXPIRED
-            else:
-                if not token:
-                    logger.error(add_prefix("No token found with sufficient scopes"))
-                    error = self.ERROR_TOKEN_INVALID
-
-        return token, error
+        return token
 
     def _fetch_location(self, location_id, token) -> "Location":
         return Location.objects.get_or_create_esi_async(id=location_id, token=token)[0]
-
-    def _logger_prefix(self):
-        """returns standard logger prefix function"""
-        if self.corporation:
-            return make_logger_prefix(self.corporation_strict.corporation_ticker)
-        return make_logger_prefix(self.eve_character_strict.character_name)
 
 
 class Blueprint(models.Model):

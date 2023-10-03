@@ -5,6 +5,8 @@ import factory.fuzzy
 
 from eveuniverse.models import EveSolarSystem, EveType
 
+from app_utils.testdata_factories import UserMainFactory
+
 from blueprints import constants
 from blueprints.models import Blueprint, Location, Owner
 
@@ -16,6 +18,18 @@ faker = factory.faker.faker.Faker()
 class BaseMetaFactory(Generic[T], factory.base.FactoryMetaClass):
     def __call__(cls, *args, **kwargs) -> T:
         return super().__call__(*args, **kwargs)
+
+
+class UserMainDefaultFactory(UserMainFactory):
+    main_character__scopes = [
+        "esi-universe.read_structures.v1",
+        "esi-assets.read_assets.v1",
+        "esi-characters.read_blueprints.v1",
+    ]
+    permissions__ = [
+        "blueprints.basic_access",
+        "blueprints.add_personal_blueprint_owner",
+    ]
 
 
 class LocationStationFactory(
@@ -46,6 +60,11 @@ class LocationStationFactory(
 class OwnerFactory(factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[Owner]):
     class Meta:
         model = Owner
+
+    @factory.lazy_attribute
+    def character(self):
+        user = UserMainDefaultFactory()
+        return user.profile.main_character.character_ownership
 
 
 class BlueprintFactory(

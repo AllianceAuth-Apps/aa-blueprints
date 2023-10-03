@@ -2,8 +2,6 @@
 
 from functools import wraps
 
-from esi.errors import TokenError
-
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.logging import LoggerAddTag
 
@@ -23,9 +21,7 @@ def fetch_token_for_owner(scopes):
     def decorator(func):
         @wraps(func)
         def _wrapped_view(owner, *args, **kwargs):
-            token, error = owner.token(scopes)
-            if error:
-                raise TokenError
+            token = owner.valid_token(scopes)
             logger.debug(
                 "%s: Using token %s for `%s`",
                 token.character_name,

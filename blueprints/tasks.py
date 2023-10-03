@@ -93,8 +93,7 @@ def update_locations_for_owner(self, owner_pk):
 def update_all_blueprints():
     for owner in Owner.objects.all():
         update_blueprints_for_owner.apply_async(
-            kwargs={"owner_pk": owner.pk},
-            priority=DEFAULT_TASK_PRIORITY,
+            kwargs={"owner_pk": owner.pk}, priority=DEFAULT_TASK_PRIORITY
         )
 
 
@@ -102,8 +101,7 @@ def update_all_blueprints():
 def update_all_industry_jobs():
     for owner in Owner.objects.all():
         update_industry_jobs_for_owner.apply_async(
-            kwargs={"owner_pk": owner.pk},
-            priority=DEFAULT_TASK_PRIORITY,
+            kwargs={"owner_pk": owner.pk}, priority=DEFAULT_TASK_PRIORITY
         )
 
 
@@ -111,8 +109,7 @@ def update_all_industry_jobs():
 def update_all_locations():
     for owner in Owner.objects.all():
         update_locations_for_owner.apply_async(
-            kwargs={"owner_pk": owner.pk},
-            priority=DEFAULT_TASK_PRIORITY,
+            kwargs={"owner_pk": owner.pk}, priority=DEFAULT_TASK_PRIORITY
         )
 
 
