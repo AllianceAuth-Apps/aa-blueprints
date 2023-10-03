@@ -108,7 +108,7 @@ class BlueprintManagerBase(models.Manager):
             for owner in Owner.objects.filter(
                 corporation__isnull=True, character__isnull=False
             )
-            if owner.character.character.corporation_id in corporation_ids
+            if owner.eve_character_strict.corporation_id in corporation_ids
         ]
         blueprints_query = self.filter(
             Q(owner__corporation__corporation_id__in=corporation_ids)

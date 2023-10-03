@@ -118,12 +118,12 @@ def add_corporate_blueprint_owner(request, token):
         if BLUEPRINTS_ADMIN_NOTIFICATIONS_ENABLED:
             notify_admins(
                 message=(
-                    f"{owner.corporation.corporation_name} was added as new corporate"
+                    f"{owner.corporation_strict.corporation_name} was added as new corporate"
                     f"blueprint owner by {request.user.username}."
                 ),
                 title=(
                     f"{__title__}: blueprint owner added: "
-                    f"{owner.corporation.corporation_name}"
+                    f"{owner.corporation_strict.corporation_name}"
                 ),
             )
     return redirect("blueprints:index")
@@ -181,7 +181,7 @@ def add_personal_blueprint_owner(request, token):
                 )
                 % {
                     "character": format_html(
-                        "<strong>{}</strong>", owner.character.character.character_name
+                        "<strong>{}</strong>", owner.eve_character_strict.character_name
                     ),
                 }
             ),
@@ -189,12 +189,12 @@ def add_personal_blueprint_owner(request, token):
         if BLUEPRINTS_ADMIN_NOTIFICATIONS_ENABLED:
             notify_admins(
                 message=(
-                    f"{owner.character.character.character_name} was added "
+                    f"{owner.eve_character_strict.character_name} was added "
                     "as a new personal blueprint owner."
                 ),
                 title=(
                     f"{__title__}: blueprint owner added: "
-                    f"{owner.character.character.character_name}"
+                    f"{owner.eve_character_strict.character_name}"
                 ),
             )
     return redirect("blueprints:index")
@@ -322,7 +322,7 @@ def list_user_owners(request):
         else:
             owner_type = "personal"
             owner_type_display = gettext_lazy("Personal")
-            owner_name = owner.character.character.character_name
+            owner_name = owner.eve_character_strict.character_name
         results.append(
             {
                 "id": owner.pk,
@@ -618,7 +618,7 @@ def remove_owner(request, owner_id):
         owner_name = (
             owner.corporation.corporation_name
             if owner.corporation
-            else owner.character.character.character_name
+            else owner.eve_character_strict.character_name
         )
         owner.delete()
         completed = True
