@@ -1,13 +1,13 @@
 """Managers for Blueprints."""
 
 import datetime as dt
-from typing import Tuple
+from typing import Any, Tuple
 
 from bravado.exception import HTTPForbidden, HTTPUnauthorized
 
 from django.contrib.auth.models import User
 from django.db import models
-from django.db.models import Case, F, Q, Value, When
+from django.db.models import Case, Count, F, Q, Value, When
 from django.db.models.functions import Concat
 from django.utils.timezone import now
 from esi.models import Token
@@ -108,7 +108,7 @@ class BlueprintManagerBase(models.Manager):
             for owner in Owner.objects.filter(
                 corporation__isnull=True, character__isnull=False
             )
-            if owner.character.character.corporation_id in corporation_ids
+            if owner.eve_character_strict.corporation_id in corporation_ids
         ]
         blueprints_query = self.filter(
             Q(owner__corporation__corporation_id__in=corporation_ids)
@@ -131,7 +131,9 @@ BlueprintManager = BlueprintManagerBase.from_queryset(BlueprintQuerySet)
 
 
 class LocationQuerySet(models.QuerySet):
-    pass
+    def annotate_blueprint_count(self) -> models.QuerySet:
+        """Add annotate with count of blueprints."""
+        return self.annotate(blueprint_count=Count("blueprints"))
 
 
 class LocationManagerBase(models.Manager):
@@ -152,7 +154,7 @@ class LocationManagerBase(models.Manager):
 
     _UPDATE_EMPTY_GRACE_MINUTES = 5
 
-    def get_or_create_esi(self, id: int, token: Token) -> Tuple[models.Model, bool]:
+    def get_or_create_esi(self, id: int, token: Token) -> Tuple[Any, bool]:
         """gets or creates location object with data fetched from ESI
 
         Stale locations will always be updated.
@@ -160,15 +162,13 @@ class LocationManagerBase(models.Manager):
         """
         return self._get_or_create_esi(id=id, token=token, update_async=False)
 
-    def get_or_create_esi_async(
-        self, id: int, token: Token
-    ) -> Tuple[models.Model, bool]:
+    def get_or_create_esi_async(self, id: int, token: Token) -> Tuple[Any, bool]:
         """gets or creates location object with data fetched from ESI asynchronous"""
         return self._get_or_create_esi(id=id, token=token, update_async=True)
 
     def _get_or_create_esi(
         self, id: int, token: Token, update_async: bool = True
-    ) -> Tuple[models.Model, bool]:
+    ) -> Tuple[Any, bool]:
         id = int(id)
         empty_threshold = now() - dt.timedelta(minutes=self._UPDATE_EMPTY_GRACE_MINUTES)
         stale_threshold = now() - dt.timedelta(hours=BLUEPRINTS_LOCATION_STALE_HOURS)
@@ -191,13 +191,11 @@ class LocationManagerBase(models.Manager):
 
         return location, created
 
-    def update_or_create_esi_async(
-        self, id: int, token: Token
-    ) -> Tuple[models.Model, bool]:
+    def update_or_create_esi_async(self, id: int, token: Token) -> Tuple[Any, bool]:
         """updates or creates location object with data fetched from ESI asynchronous"""
         return self._update_or_create_esi(id=id, token=token, update_async=True)
 
-    def update_or_create_esi(self, id: int, token: Token) -> Tuple[models.Model, bool]:
+    def update_or_create_esi(self, id: int, token: Token) -> Tuple[Any, bool]:
         """updates or creates location object with data fetched from ESI synchronous
 
         The preferred method to use is: `update_or_create_esi_async()`,
@@ -208,7 +206,7 @@ class LocationManagerBase(models.Manager):
 
     def _update_or_create_esi(
         self, id: int, token: Token, update_async: bool = True
-    ) -> Tuple[models.Model, bool]:
+    ) -> Tuple[Any, bool]:
         id = int(id)
         if self.model.is_solar_system_id(id):
             eve_solar_system, _ = EveSolarSystem.objects.get_or_create_esi(id=id)
@@ -230,7 +228,7 @@ class LocationManagerBase(models.Manager):
                 id=id, station=station
             )
 
-        elif self.model.is_structure_id(id):
+        else:  # structure or random asset
             if update_async:
                 location, created = self._structure_update_or_create_esi_async(
                     id=id, token=token
@@ -239,17 +237,12 @@ class LocationManagerBase(models.Manager):
                 location, created = self.structure_update_or_create_esi(
                     id=id, token=token
                 )
-        else:
-            logger.warning(
-                "%s: Creating empty location for ID not matching any known pattern:", id
-            )
-            location, created = self.get_or_create(id=id)
 
         return location, created
 
     def _station_update_or_create_dict(
         self, id: int, station: dict
-    ) -> Tuple[models.Model, bool]:
+    ) -> Tuple[Any, bool]:
         if station.get("system_id"):
             eve_solar_system, _ = EveSolarSystem.objects.get_or_create_esi(
                 id=station.get("system_id")
@@ -289,11 +282,11 @@ class LocationManagerBase(models.Manager):
         )
         return location, created
 
-    def structure_update_or_create_esi(self, id: int, token: Token):
+    def structure_update_or_create_esi(self, id: int, token: Token) -> Tuple[Any, bool]:
         """Update or creates structure from ESI"""
         fetch_esi_status().raise_for_status()
         try:
-            structure = esi.client.Universe.get_universe_structures_structure_id(
+            structure_data = esi.client.Universe.get_universe_structures_structure_id(
                 structure_id=id, token=token.valid_access_token()
             ).results()
         except (HTTPUnauthorized, HTTPForbidden) as http_error:
@@ -303,16 +296,13 @@ class LocationManagerBase(models.Manager):
                 id,
                 http_error,
             )
-            location, created = self.get_or_create(id=id)
-        else:
-            location, created = self._structure_update_or_create_dict(
-                id=id, structure=structure
-            )
-        return location, created
+            return self.get_or_create(id=id)
+
+        return self._structure_update_or_create_dict(id=id, structure=structure_data)
 
     def _structure_update_or_create_dict(
         self, id: int, structure: dict
-    ) -> Tuple[models.Model, bool]:
+    ) -> Tuple[Any, bool]:
         """creates a new Location object from a structure dict"""
         if structure.get("solar_system_id"):
             eve_solar_system, _ = EveSolarSystem.objects.get_or_create_esi(
@@ -343,6 +333,19 @@ class LocationManagerBase(models.Manager):
 
 
 LocationManager = LocationManagerBase.from_queryset(LocationQuerySet)
+
+
+class OwnerQuerySet(models.QuerySet):
+    def annotate_blueprint_count(self) -> models.QuerySet:
+        """Add annotate with count of blueprints."""
+        return self.annotate(blueprint_count=Count("blueprints"))
+
+
+class OwnerManagerBase(models.Manager):
+    ...
+
+
+OwnerManager = OwnerManagerBase.from_queryset(OwnerQuerySet)
 
 
 class RequestQuerySet(models.QuerySet):

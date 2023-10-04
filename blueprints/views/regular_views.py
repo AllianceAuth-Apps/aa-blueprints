@@ -1,8 +1,8 @@
 """Regular views for Blueprints."""
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.html import format_html
@@ -18,7 +18,6 @@ from allianceauth.eveonline.models import EveCharacter, EveCorporationInfo
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.allianceauth import notify_admins
 from app_utils.logging import LoggerAddTag
-from app_utils.messages import messages_plus
 
 from blueprints import __title__, tasks
 from blueprints.app_settings import (
@@ -66,7 +65,7 @@ def add_corporate_blueprint_owner(request, token):
             user=request.user, character=token_char
         )
     except CharacterOwnership.DoesNotExist:
-        messages_plus.error(
+        messages.error(
             request,
             format_html(
                 gettext_lazy(
@@ -98,7 +97,7 @@ def add_corporate_blueprint_owner(request, token):
 
         tasks.update_blueprints_for_owner.delay(owner_pk=owner.pk)
         tasks.update_locations_for_owner.delay(owner_pk=owner.pk)
-        messages_plus.info(
+        messages.info(
             request,
             format_html(
                 gettext_lazy(
@@ -118,12 +117,12 @@ def add_corporate_blueprint_owner(request, token):
         if BLUEPRINTS_ADMIN_NOTIFICATIONS_ENABLED:
             notify_admins(
                 message=(
-                    f"{owner.corporation.corporation_name} was added as new corporate"
+                    f"{owner.corporation_strict.corporation_name} was added as new corporate"
                     f"blueprint owner by {request.user.username}."
                 ),
                 title=(
                     f"{__title__}: blueprint owner added: "
-                    f"{owner.corporation.corporation_name}"
+                    f"{owner.corporation_strict.corporation_name}"
                 ),
             )
     return redirect("blueprints:index")
@@ -147,7 +146,7 @@ def add_personal_blueprint_owner(request, token):
             user=request.user, character=token_char
         )
     except CharacterOwnership.DoesNotExist:
-        messages_plus.error(
+        messages.error(
             request,
             format_html(
                 gettext_lazy(
@@ -171,7 +170,7 @@ def add_personal_blueprint_owner(request, token):
 
         tasks.update_blueprints_for_owner.delay(owner_pk=owner.pk)
         tasks.update_locations_for_owner.delay(owner_pk=owner.pk)
-        messages_plus.info(
+        messages.info(
             request,
             format_html(
                 gettext_lazy(
@@ -181,7 +180,7 @@ def add_personal_blueprint_owner(request, token):
                 )
                 % {
                     "character": format_html(
-                        "<strong>{}</strong>", owner.character.character.character_name
+                        "<strong>{}</strong>", owner.eve_character_strict.character_name
                     ),
                 }
             ),
@@ -189,12 +188,12 @@ def add_personal_blueprint_owner(request, token):
         if BLUEPRINTS_ADMIN_NOTIFICATIONS_ENABLED:
             notify_admins(
                 message=(
-                    f"{owner.character.character.character_name} was added "
+                    f"{owner.eve_character_strict.character_name} was added "
                     "as a new personal blueprint owner."
                 ),
                 title=(
                     f"{__title__}: blueprint owner added: "
-                    f"{owner.character.character.character_name}"
+                    f"{owner.eve_character_strict.character_name}"
                 ),
             )
     return redirect("blueprints:index")
@@ -221,15 +220,17 @@ def convert_blueprint(blueprint: Blueprint, user, details=False) -> dict:
         owner_type = "character"
 
     if user.has_perm("blueprints.view_blueprint_locations"):
-        location = blueprint.location.full_qualified_name()
+        location_name = blueprint.location.full_qualified_name()
+        location_detail = blueprint.location_flag_obj.label
     else:
-        location = gettext_lazy("(Unknown)")
+        location_name = location_detail = gettext_lazy("(no access)")
     summary = {
         "icn": icon,
         "qty": blueprint.quantity,
         "pk": blueprint.pk,
         "nme": blueprint.eve_type.name,
-        "loc": location,
+        "loc": location_name,
+        "lfg": location_detail,
         "me": blueprint.material_efficiency,
         "te": blueprint.time_efficiency,
         "og": original,
@@ -308,9 +309,9 @@ def list_blueprints_ffd(request):
     "blueprints.add_corporate_blueprint_owner",
 )
 def list_user_owners(request):
-    owners = Owner.objects.filter(character__user=request.user).annotate(
-        quantity=Count("blueprint")
-    )
+    owners = Owner.objects.filter(
+        character__user=request.user
+    ).annotate_blueprint_count()
     results = []
     for owner in owners:
         if owner.corporation:
@@ -320,14 +321,14 @@ def list_user_owners(request):
         else:
             owner_type = "personal"
             owner_type_display = gettext_lazy("Personal")
-            owner_name = owner.character.character.character_name
+            owner_name = owner.eve_character_strict.character_name
         results.append(
             {
                 "id": owner.pk,
                 "type": owner_type,
                 "type_display": owner_type_display,
                 "name": owner_name,
-                "quantity": owner.quantity,
+                "quantity": owner.blueprint_count,
             }
         )
     return JsonResponse(results, safe=False)
@@ -364,7 +365,7 @@ def create_request(request):
             runs=runs,
         )
         user_request.notify_new_request()
-        messages_plus.info(
+        messages.info(
             request,
             format_html(
                 gettext_lazy("A copy of %(blueprint)s has been requested.")
@@ -486,7 +487,7 @@ def mark_request_fulfilled(request, request_id):
     )
     if completed:
         user_request.notify_request_fulfilled()
-        messages_plus.info(
+        messages.info(
             request,
             format_html(
                 gettext_lazy(
@@ -496,7 +497,7 @@ def mark_request_fulfilled(request, request_id):
             ),
         )
     else:
-        messages_plus.error(
+        messages.error(
             request,
             format_html(
                 gettext_lazy("Fulfilling the request for %(blueprint)s has failed.")
@@ -515,7 +516,7 @@ def mark_request_in_progress(request, request_id):
     )
     if completed:
         user_request.notify_request_in_progress()
-        messages_plus.info(
+        messages.info(
             request,
             format_html(
                 gettext_lazy(
@@ -525,7 +526,7 @@ def mark_request_in_progress(request, request_id):
             ),
         )
     else:
-        messages_plus.error(
+        messages.error(
             request,
             format_html(
                 gettext_lazy(
@@ -546,7 +547,7 @@ def mark_request_open(request, request_id):
     )
     if completed:
         user_request.notify_request_reopened(request.user)
-        messages_plus.info(
+        messages.info(
             request,
             format_html(
                 gettext_lazy("The request for %(blueprint)s has been re-opened.")
@@ -554,7 +555,7 @@ def mark_request_open(request, request_id):
             ),
         )
     else:
-        messages_plus.error(
+        messages.error(
             request,
             format_html(
                 gettext_lazy("Re-opening the request for %(blueprint)s has failed.")
@@ -581,7 +582,7 @@ def mark_request_cancelled(request, request_id):
             user_request.notify_request_canceled_by_requestor()
         else:
             user_request.notify_request_canceled_by_approver(request.user)
-        messages_plus.info(
+        messages.info(
             request,
             format_html(
                 gettext_lazy(
@@ -591,7 +592,7 @@ def mark_request_cancelled(request, request_id):
             ),
         )
     else:
-        messages_plus.error(
+        messages.error(
             request,
             format_html(
                 gettext_lazy("Cancelling the request for %(blueprint)s has failed.")
@@ -616,13 +617,13 @@ def remove_owner(request, owner_id):
         owner_name = (
             owner.corporation.corporation_name
             if owner.corporation
-            else owner.character.character.character_name
+            else owner.eve_character_strict.character_name
         )
         owner.delete()
         completed = True
 
     if completed:
-        messages_plus.info(
+        messages.info(
             request,
             format_html(
                 gettext_lazy("%(owner)s has been removed as a blueprint owner.")
@@ -630,7 +631,7 @@ def remove_owner(request, owner_id):
             ),
         )
     else:
-        messages_plus.error(
+        messages.error(
             request,
             format_html(gettext_lazy("Removing the blueprint owner has failed.")),
         )

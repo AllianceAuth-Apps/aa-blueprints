@@ -7,6 +7,20 @@ and this project adheres to [PEP-440](https://www.python.org/dev/peps/pep-0440/)
 
 ## [Unreleased]
 
+## [1.6.0] - 2023-10-04
+
+### Added
+
+- Location details (e.g. Hangar) now shown for each blueprint
+- Ability to enable and disable owners on the admin site
+
+### Changed
+
+- Now raises all token error types when encountering an issue
+- Error logging delegated to celery for token errors
+- Improved admin pages
+- Refactoring
+
 ## [1.5.2] - 2023-10-02
 
 ### Changed

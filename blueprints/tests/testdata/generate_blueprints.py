@@ -67,7 +67,7 @@ owner, _ = Owner.objects.update_or_create(
 # create blueprints for owner
 eve_type, _ = EveType.objects.get_or_create_esi(id=692)  # stabber bp
 location, _ = Location.objects.get_or_create_esi(
-    id=60003760, token=owner.token()
+    id=60003760, token=owner.valid_token()
 )  # jita 4-4
 
 print(f"Generating {MAX_ITEMS} blueprints for {corporation}...")

@@ -33,8 +33,12 @@
             <div class="tab-pane panel active panel-default" id="tab-summary">
                 <div class="panel-body modal-tab">
                         <div class="row description-row">
-                            <div class="col-sm-4">{% translate "Location" %}</div>
+                            <div class="col-sm-4">{% translate "Location name" %}</div>
                             <div class='col-sm-8'>{{ blueprint.loc }}</div>
+                        </div>
+                        <div class="row description-row">
+                            <div class="col-sm-4">{% translate "Location detail" %}</div>
+                            <div class='col-sm-8'>{{ blueprint.lfg }}</div>
                         </div>
                         <div class="row description-row">
                             <div class="col-sm-4">{% translate "Material Efficiency" %}</div>
