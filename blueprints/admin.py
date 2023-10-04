@@ -123,6 +123,36 @@ class BlueprintAdmin(admin.ModelAdmin):
         return False
 
 
+class LocationHasBlueprintsListFilter(admin.SimpleListFilter):
+    title = _("has blueprints")
+    parameter_name = "has_blueprints"
+
+    def lookups(self, request, model_admin):
+        return (("yes", _("yes")), ("no", _("no")))
+
+    def queryset(self, request, queryset):
+        value = self.value()
+        if value == "yes":
+            return queryset.annotate_blueprint_count().filter(blueprint_count__gt=0)
+        if value == "no":
+            return queryset.annotate_blueprint_count().filter(blueprint_count=0)
+
+
+class LocationHasNameListFilter(admin.SimpleListFilter):
+    title = _("has name")
+    parameter_name = "has_name"
+
+    def lookups(self, request, model_admin):
+        return (("yes", _("yes")), ("no", _("no")))
+
+    def queryset(self, request, queryset):
+        value = self.value()
+        if value == "yes":
+            return queryset.exclude(name="")
+        if value == "no":
+            return queryset.filter(name="")
+
+
 @admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):
     list_display = (
@@ -132,10 +162,13 @@ class LocationAdmin(admin.ModelAdmin):
         "_group",
         "_solar_system",
         "_parent",
+        "_blueprint_count",
         "updated_at",
     )
     list_filter = (
         # ("parent", admin.RelatedOnlyFieldListFilter),
+        LocationHasBlueprintsListFilter,
+        LocationHasNameListFilter,
         (
             "eve_solar_system__eve_constellation__eve_region",
             admin.RelatedOnlyFieldListFilter,
@@ -154,7 +187,13 @@ class LocationAdmin(admin.ModelAdmin):
             "eve_type__eve_group",
             "parent",
             "parent__eve_type",
-        )
+        ).annotate_blueprint_count()
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
     @admin.display(ordering="eve_solar_system__name")
     def _solar_system(self, obj: Location):
@@ -174,16 +213,14 @@ class LocationAdmin(admin.ModelAdmin):
         url = reverse("admin:blueprints_location_change", args=(obj.parent.id,))
         return format_html('<a href="{}">{}</a>', url, obj.parent)
 
-    def has_add_permission(self, request):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False
+    @admin.display(ordering="blueprint_count")
+    def _blueprint_count(self, obj: Location):
+        return obj.blueprint_count
 
 
 @admin.register(Owner)
 class OwnerAdmin(admin.ModelAdmin):
-    list_display = ("__str__", "is_active", "_type", "character", "_blueprints_count")
+    list_display = ("__str__", "is_active", "_type", "character", "_blueprint_count")
     actions = ["activate_owners", "deactivate_owners", "update_locations"]
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Any]:
@@ -191,7 +228,7 @@ class OwnerAdmin(admin.ModelAdmin):
             super()
             .get_queryset(request)
             .select_related("character__character", "corporation", "character__user")
-            .annotate_blueprints_count()
+            .annotate_blueprint_count()
         )
         return qs
 
@@ -201,9 +238,9 @@ class OwnerAdmin(admin.ModelAdmin):
     def has_change_permission(self, request, obj=None):
         return False
 
-    @admin.display(ordering="blueprints_count")
-    def _blueprints_count(self, obj: Owner):
-        return obj.blueprints_count
+    @admin.display(ordering="blueprint_count")
+    def _blueprint_count(self, obj: Owner):
+        return obj.blueprint_count
 
     def _type(self, obj):
         return "Corporate" if obj.corporation else "Personal"

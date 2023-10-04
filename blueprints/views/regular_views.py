@@ -311,7 +311,7 @@ def list_blueprints_ffd(request):
 def list_user_owners(request):
     owners = Owner.objects.filter(
         character__user=request.user
-    ).annotate_blueprints_count()
+    ).annotate_blueprint_count()
     results = []
     for owner in owners:
         if owner.corporation:
@@ -328,7 +328,7 @@ def list_user_owners(request):
                 "type": owner_type,
                 "type_display": owner_type_display,
                 "name": owner_name,
-                "quantity": owner.blueprints_count,
+                "quantity": owner.blueprint_count,
             }
         )
     return JsonResponse(results, safe=False)

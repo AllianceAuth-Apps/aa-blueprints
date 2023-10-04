@@ -131,7 +131,9 @@ BlueprintManager = BlueprintManagerBase.from_queryset(BlueprintQuerySet)
 
 
 class LocationQuerySet(models.QuerySet):
-    pass
+    def annotate_blueprint_count(self) -> models.QuerySet:
+        """Add annotate with count of blueprints."""
+        return self.annotate(blueprint_count=Count("blueprints"))
 
 
 class LocationManagerBase(models.Manager):
@@ -337,8 +339,9 @@ LocationManager = LocationManagerBase.from_queryset(LocationQuerySet)
 
 
 class OwnerQuerySet(models.QuerySet):
-    def annotate_blueprints_count(self) -> models.QuerySet:
-        return self.annotate(blueprints_count=Count("blueprints"))
+    def annotate_blueprint_count(self) -> models.QuerySet:
+        """Add annotate with count of blueprints."""
+        return self.annotate(blueprint_count=Count("blueprints"))
 
 
 class OwnerManagerBase(models.Manager):
