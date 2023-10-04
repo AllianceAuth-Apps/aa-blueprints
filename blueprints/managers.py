@@ -226,7 +226,7 @@ class LocationManagerBase(models.Manager):
                 id=id, station=station
             )
 
-        elif self.model.is_structure_id(id):
+        else:  # structure or random asset
             if update_async:
                 location, created = self._structure_update_or_create_esi_async(
                     id=id, token=token
@@ -235,11 +235,6 @@ class LocationManagerBase(models.Manager):
                 location, created = self.structure_update_or_create_esi(
                     id=id, token=token
                 )
-        else:
-            logger.warning(
-                "%s: Creating empty location for ID not matching any known pattern:", id
-            )
-            location, created = self.get_or_create(id=id)
 
         return location, created
 

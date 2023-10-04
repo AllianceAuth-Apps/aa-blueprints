@@ -137,13 +137,13 @@ class Owner(models.Model):
                 else:
                     asset_locations[location_id] = [asset["item_id"]]
 
-        for location in list(asset_locations.keys()):
-            asset = assets_by_id[location]
+        for location_id in asset_locations.keys():
+            asset = assets_by_id[location_id]
             parent_location = asset["location_id"]
             parent = get_or_create_location_async(parent_location, token=token)
             eve_type, _ = EveType.objects.get_or_create_esi(id=asset["type_id"])
             Location.objects.update_or_create(
-                id=location, defaults={"parent": parent, "eve_type": eve_type}
+                id=location_id, defaults={"parent": parent, "eve_type": eve_type}
             )
 
     def update_blueprints_esi(self):
@@ -615,7 +615,6 @@ class Location(models.Model):
     _SOLAR_SYSTEM_ID_END = 33_000_000
     _STATION_ID_START = 60_000_000
     _STATION_ID_END = 64_000_000
-    _STRUCTURE_ID_START = 1_000_000_000_000
 
     id = models.PositiveBigIntegerField(
         primary_key=True,
@@ -700,10 +699,6 @@ class Location(models.Model):
     def is_station(self) -> bool:
         return self.is_station_id(self.id)
 
-    @property
-    def is_structure(self) -> bool:
-        return self.is_structure_id(self.id)
-
     @classmethod
     def is_solar_system_id(cls, location_id: int) -> bool:
         return cls._SOLAR_SYSTEM_ID_START <= location_id <= cls._SOLAR_SYSTEM_ID_END
@@ -711,10 +706,6 @@ class Location(models.Model):
     @classmethod
     def is_station_id(cls, location_id: int) -> bool:
         return cls._STATION_ID_START <= location_id <= cls._STATION_ID_END
-
-    @classmethod
-    def is_structure_id(cls, location_id: int) -> bool:
-        return location_id >= cls._STRUCTURE_ID_START
 
     def full_qualified_name(self) -> str:
         """Return the full qualified name of this location."""
