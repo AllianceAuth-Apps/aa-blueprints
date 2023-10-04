@@ -282,11 +282,11 @@ class LocationManagerBase(models.Manager):
         )
         return location, created
 
-    def structure_update_or_create_esi(self, id: int, token: Token):
+    def structure_update_or_create_esi(self, id: int, token: Token) -> Tuple[Any, bool]:
         """Update or creates structure from ESI"""
         fetch_esi_status().raise_for_status()
         try:
-            structure = esi.client.Universe.get_universe_structures_structure_id(
+            structure_data = esi.client.Universe.get_universe_structures_structure_id(
                 structure_id=id, token=token.valid_access_token()
             ).results()
         except (HTTPUnauthorized, HTTPForbidden) as http_error:
@@ -296,12 +296,9 @@ class LocationManagerBase(models.Manager):
                 id,
                 http_error,
             )
-            location, created = self.get_or_create(id=id)
-        else:
-            location, created = self._structure_update_or_create_dict(
-                id=id, structure=structure
-            )
-        return location, created
+            return self.get_or_create(id=id)
+
+        return self._structure_update_or_create_dict(id=id, structure=structure_data)
 
     def _structure_update_or_create_dict(
         self, id: int, structure: dict

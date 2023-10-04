@@ -7,7 +7,7 @@ and this project adheres to [PEP-440](https://www.python.org/dev/peps/pep-0440/)
 
 ## [Unreleased]
 
-## [1.6.0] - TBD
+## [1.6.0] - 2023-10-04
 
 ### Added
 
@@ -18,6 +18,7 @@ and this project adheres to [PEP-440](https://www.python.org/dev/peps/pep-0440/)
 
 - Now raises all token error types when encountering an issue
 - Error logging delegated to celery for token errors
+- Improved admin pages
 - Refactoring
 
 ## [1.5.2] - 2023-10-02
