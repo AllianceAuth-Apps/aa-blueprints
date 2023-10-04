@@ -332,7 +332,8 @@ class Owner(models.Model):
         return token
 
     def _fetch_location(self, location_id, token) -> "Location":
-        return Location.objects.get_or_create_esi_async(id=location_id, token=token)[0]
+        obj, _ = Location.objects.get_or_create_esi_async(id=location_id, token=token)
+        return obj
 
 
 class Blueprint(models.Model):

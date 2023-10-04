@@ -1,7 +1,7 @@
 """Managers for Blueprints."""
 
 import datetime as dt
-from typing import Tuple
+from typing import Any, Tuple
 
 from bravado.exception import HTTPForbidden, HTTPUnauthorized
 
@@ -152,7 +152,7 @@ class LocationManagerBase(models.Manager):
 
     _UPDATE_EMPTY_GRACE_MINUTES = 5
 
-    def get_or_create_esi(self, id: int, token: Token) -> Tuple[models.Model, bool]:
+    def get_or_create_esi(self, id: int, token: Token) -> Tuple[Any, bool]:
         """gets or creates location object with data fetched from ESI
 
         Stale locations will always be updated.
@@ -160,15 +160,13 @@ class LocationManagerBase(models.Manager):
         """
         return self._get_or_create_esi(id=id, token=token, update_async=False)
 
-    def get_or_create_esi_async(
-        self, id: int, token: Token
-    ) -> Tuple[models.Model, bool]:
+    def get_or_create_esi_async(self, id: int, token: Token) -> Tuple[Any, bool]:
         """gets or creates location object with data fetched from ESI asynchronous"""
         return self._get_or_create_esi(id=id, token=token, update_async=True)
 
     def _get_or_create_esi(
         self, id: int, token: Token, update_async: bool = True
-    ) -> Tuple[models.Model, bool]:
+    ) -> Tuple[Any, bool]:
         id = int(id)
         empty_threshold = now() - dt.timedelta(minutes=self._UPDATE_EMPTY_GRACE_MINUTES)
         stale_threshold = now() - dt.timedelta(hours=BLUEPRINTS_LOCATION_STALE_HOURS)
@@ -191,13 +189,11 @@ class LocationManagerBase(models.Manager):
 
         return location, created
 
-    def update_or_create_esi_async(
-        self, id: int, token: Token
-    ) -> Tuple[models.Model, bool]:
+    def update_or_create_esi_async(self, id: int, token: Token) -> Tuple[Any, bool]:
         """updates or creates location object with data fetched from ESI asynchronous"""
         return self._update_or_create_esi(id=id, token=token, update_async=True)
 
-    def update_or_create_esi(self, id: int, token: Token) -> Tuple[models.Model, bool]:
+    def update_or_create_esi(self, id: int, token: Token) -> Tuple[Any, bool]:
         """updates or creates location object with data fetched from ESI synchronous
 
         The preferred method to use is: `update_or_create_esi_async()`,
@@ -208,7 +204,7 @@ class LocationManagerBase(models.Manager):
 
     def _update_or_create_esi(
         self, id: int, token: Token, update_async: bool = True
-    ) -> Tuple[models.Model, bool]:
+    ) -> Tuple[Any, bool]:
         id = int(id)
         if self.model.is_solar_system_id(id):
             eve_solar_system, _ = EveSolarSystem.objects.get_or_create_esi(id=id)
@@ -249,7 +245,7 @@ class LocationManagerBase(models.Manager):
 
     def _station_update_or_create_dict(
         self, id: int, station: dict
-    ) -> Tuple[models.Model, bool]:
+    ) -> Tuple[Any, bool]:
         if station.get("system_id"):
             eve_solar_system, _ = EveSolarSystem.objects.get_or_create_esi(
                 id=station.get("system_id")
@@ -312,7 +308,7 @@ class LocationManagerBase(models.Manager):
 
     def _structure_update_or_create_dict(
         self, id: int, structure: dict
-    ) -> Tuple[models.Model, bool]:
+    ) -> Tuple[Any, bool]:
         """creates a new Location object from a structure dict"""
         if structure.get("solar_system_id"):
             eve_solar_system, _ = EveSolarSystem.objects.get_or_create_esi(
