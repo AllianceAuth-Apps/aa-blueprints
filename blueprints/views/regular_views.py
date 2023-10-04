@@ -3,7 +3,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.html import format_html
@@ -310,9 +309,9 @@ def list_blueprints_ffd(request):
     "blueprints.add_corporate_blueprint_owner",
 )
 def list_user_owners(request):
-    owners = Owner.objects.filter(character__user=request.user).annotate(
-        quantity=Count("blueprints")
-    )
+    owners = Owner.objects.filter(
+        character__user=request.user
+    ).annotate_blueprints_count()
     results = []
     for owner in owners:
         if owner.corporation:
@@ -329,7 +328,7 @@ def list_user_owners(request):
                 "type": owner_type,
                 "type_display": owner_type_display,
                 "name": owner_name,
-                "quantity": owner.quantity,
+                "quantity": owner.blueprints_count,
             }
         )
     return JsonResponse(results, safe=False)

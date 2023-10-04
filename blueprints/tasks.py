@@ -83,7 +83,7 @@ def update_industry_jobs_for_owner(self, owner_pk):
         },
     }
 )
-def update_locations_for_owner(self, owner_pk):
+def update_locations_for_owner(self, owner_pk: int):
     """fetches all blueprints for owner from ESI"""
     owner = Owner.objects.get(pk=owner_pk)
     owner.update_locations_esi()

@@ -19,13 +19,19 @@ from app_utils.logging import LoggerAddTag
 
 from . import __title__
 from .decorators import fetch_token_for_owner
-from .managers import BlueprintManager, LocationManager, RequestManager
+from .managers import BlueprintManager, LocationManager, OwnerManager, RequestManager
 from .providers import esi
 from .validators import validate_material_efficiency, validate_time_efficiency
 
 NAMES_MAX_LENGTH = 100
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+
+
+def get_or_create_location_async(location_id: int, token: Token) -> "Location":
+    """Get or create a location sync - helper function."""
+    obj, _ = Location.objects.get_or_create_esi_async(id=location_id, token=token)
+    return obj
 
 
 class General(models.Model):
@@ -71,6 +77,8 @@ class Owner(models.Model):
         default=True,
         help_text=("whether this owner is currently included in the sync process"),
     )
+
+    objects = OwnerManager()
 
     class Meta:
         default_permissions = ()
@@ -132,7 +140,7 @@ class Owner(models.Model):
         for location in list(asset_locations.keys()):
             asset = assets_by_id[location]
             parent_location = asset["location_id"]
-            parent = self._fetch_location(parent_location, token=token)
+            parent = get_or_create_location_async(parent_location, token=token)
             eve_type, _ = EveType.objects.get_or_create_esi(id=asset["type_id"])
             Location.objects.update_or_create(
                 id=location, defaults={"parent": parent, "eve_type": eve_type}
@@ -177,7 +185,7 @@ class Owner(models.Model):
             if original is not None:
                 # We've seen this blueprint coming from ESI, so we know it shouldn't be deleted
                 blueprint_ids_to_remove.remove(original.item_id)
-                original.location = self._fetch_location(
+                original.location = get_or_create_location_async(
                     blueprint["location_id"],
                     token=token,
                 )
@@ -190,7 +198,7 @@ class Owner(models.Model):
                 original.save()
             else:
                 self.blueprints.create(
-                    location=self._fetch_location(
+                    location=get_or_create_location_async(
                         blueprint["location_id"], token=token
                     ),
                     location_flag=location_flag,
@@ -253,7 +261,7 @@ class Owner(models.Model):
                                 id=job["job_id"],
                                 activity=job["activity_id"],
                                 owner=self,
-                                location=self._fetch_location(
+                                location=get_or_create_location_async(
                                     job["output_location_id"],
                                     token=token,
                                 ),
@@ -330,10 +338,6 @@ class Owner(models.Model):
             raise TokenError(f"{self}: No valid token found with sufficient scopes")
 
         return token
-
-    def _fetch_location(self, location_id, token) -> "Location":
-        obj, _ = Location.objects.get_or_create_esi_async(id=location_id, token=token)
-        return obj
 
 
 class Blueprint(models.Model):

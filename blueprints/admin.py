@@ -3,12 +3,13 @@
 from typing import Any
 
 from django.contrib import admin
-from django.db.models.query import QuerySet
+from django.db.models import QuerySet
 from django.http.request import HttpRequest
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 
+from . import tasks
 from .models import Blueprint, IndustryJob, Location, Owner, Request
 
 
@@ -182,17 +183,37 @@ class LocationAdmin(admin.ModelAdmin):
 
 @admin.register(Owner)
 class OwnerAdmin(admin.ModelAdmin):
-    list_display = ("character", "_type", "corporation", "is_active")
-    actions = ["activate_owners", "deactivate_owners"]
+    list_display = ("__str__", "is_active", "_type", "character", "_blueprints_count")
+    actions = ["activate_owners", "deactivate_owners", "update_locations"]
 
-    def _type(self, obj):
-        return "Corporate" if obj.corporation else "Personal"
+    def get_queryset(self, request: HttpRequest) -> QuerySet[Any]:
+        qs = (
+            super()
+            .get_queryset(request)
+            .select_related("character__character", "corporation", "character__user")
+            .annotate_blueprints_count()
+        )
+        return qs
 
     def has_add_permission(self, request):
         return False
 
     def has_change_permission(self, request, obj=None):
         return False
+
+    @admin.display(ordering="blueprints_count")
+    def _blueprints_count(self, obj: Owner):
+        return obj.blueprints_count
+
+    def _type(self, obj):
+        return "Corporate" if obj.corporation else "Personal"
+
+    @admin.action(description="Update locations for selected owners")
+    def update_locations(self, request, queryset):
+        for owner in queryset:
+            tasks.update_locations_for_owner.delay(owner_pk=owner.pk)
+        count = queryset.count()
+        self.message_user(request, f"Started updating locations for {count} owners.")
 
     @admin.action(description="Activate selected owners")
     def activate_owners(self, request, queryset):

@@ -7,7 +7,7 @@ from bravado.exception import HTTPForbidden, HTTPUnauthorized
 
 from django.contrib.auth.models import User
 from django.db import models
-from django.db.models import Case, F, Q, Value, When
+from django.db.models import Case, Count, F, Q, Value, When
 from django.db.models.functions import Concat
 from django.utils.timezone import now
 from esi.models import Token
@@ -339,6 +339,18 @@ class LocationManagerBase(models.Manager):
 
 
 LocationManager = LocationManagerBase.from_queryset(LocationQuerySet)
+
+
+class OwnerQuerySet(models.QuerySet):
+    def annotate_blueprints_count(self) -> models.QuerySet:
+        return self.annotate(blueprints_count=Count("blueprints"))
+
+
+class OwnerManagerBase(models.Manager):
+    ...
+
+
+OwnerManager = OwnerManagerBase.from_queryset(OwnerQuerySet)
 
 
 class RequestQuerySet(models.QuerySet):
