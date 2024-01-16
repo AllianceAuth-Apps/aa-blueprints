@@ -7,6 +7,12 @@ and this project adheres to [PEP-440](https://www.python.org/dev/peps/pep-0440/)
 
 ## [Unreleased]
 
+## [1.7.0] - TBD
+
+### Changed
+
+- Added support for AA4
+
 ## [1.6.0] - 2023-10-04
 
 ### Added
