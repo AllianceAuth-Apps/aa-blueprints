@@ -15,6 +15,7 @@ and this project adheres to [PEP-440](https://www.python.org/dev/peps/pep-0440/)
 - Fix pylint issues and refactor
 - Fixed pylint issues and refactor
 - Added pylint checks
+- Improved test suite
 
 ## [1.6.0] - 2023-10-04
 

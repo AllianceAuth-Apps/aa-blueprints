@@ -67,7 +67,7 @@ def update_blueprints_for_owner(owner_pk: int):
     }
 )
 def update_industry_jobs_for_owner(owner_pk: int):
-    """Fetche all industry jobs for an owner from ESI."""
+    """Fetch all industry jobs for an owner from ESI."""
     owner = Owner.objects.get(pk=owner_pk)
     owner.update_industry_jobs_esi()
 
@@ -133,12 +133,14 @@ def update_structure_esi(self, id: int, token_pk: int):
     token = Token.objects.get(pk=token_pk)
 
     try:
-        Location.objects.structure_update_or_create_esi(id, token)
+        Location.objects.structure_update_or_create_esi(id=id, token=token)
+
     except EsiOffline as ex:
         logger.warning(
             "Location #%s: ESI appears to be offline. Trying again in 30 minutes.", id
         )
         raise self.retry(countdown=30 * 60 + int(random.uniform(1, 20))) from ex
+
     except EsiErrorLimitExceeded as ex:
         logger.warning(
             "Location #%s: ESI error limit threshold reached. "
