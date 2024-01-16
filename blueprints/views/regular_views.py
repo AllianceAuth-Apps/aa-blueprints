@@ -458,7 +458,7 @@ def list_open_requests(request: HttpRequest):
 
 
 def mark_request(
-    request: HttpRequest,
+    user: User,
     request_id: int,
     status: str,
     fulfulling_user: Optional[User],
@@ -466,11 +466,10 @@ def mark_request(
     *,
     can_requestor_edit: bool = False,
 ) -> Tuple[Request, bool]:
+    """Change the status of a blueprint request."""
     completed = False
     user_request = get_object_or_404(Request, pk=request_id)
-    character_ownerships = request.user.character_ownerships.select_related(
-        "character"
-    ).all()
+    character_ownerships = user.character_ownerships.select_related("character").all()
     corporation_ids = {
         character.character.corporation_id for character in character_ownerships
     }
@@ -488,7 +487,7 @@ def mark_request(
     if (
         has_requestor_character_in_owner_corporation
         or is_requestor_owner_of_blueprint
-        or (can_requestor_edit and user_request.requesting_user == request.user)
+        or (can_requestor_edit and user_request.requesting_user == user)
     ):
         if closed:
             user_request.closed_at = now()
@@ -507,8 +506,9 @@ def mark_request(
 @permissions_required("blueprints.manage_requests")
 @require_POST
 def mark_request_fulfilled(request: HttpRequest, request_id: int):
+    """Render view to mark a blueprint request as fulfilled."""
     user_request, completed = mark_request(
-        request, request_id, Request.STATUS_FULFILLED, request.user, True
+        request.user, request_id, Request.STATUS_FULFILLED, request.user, True
     )
     if completed:
         user_request.notify_request_fulfilled()
@@ -534,8 +534,9 @@ def mark_request_fulfilled(request: HttpRequest, request_id: int):
 @permissions_required("blueprints.manage_requests")
 @require_POST
 def mark_request_in_progress(request: HttpRequest, request_id: int):
+    """Render view to mark a blueprint request as in progress."""
     user_request, completed = mark_request(
-        request, request_id, Request.STATUS_IN_PROGRESS, request.user, False
+        request.user, request_id, Request.STATUS_IN_PROGRESS, request.user, False
     )
     if completed:
         user_request.notify_request_in_progress()
@@ -561,8 +562,9 @@ def mark_request_in_progress(request: HttpRequest, request_id: int):
 @permissions_required("blueprints.manage_requests")
 @require_POST
 def mark_request_open(request: HttpRequest, request_id: int):
+    """Render view to mark a blueprint request as open."""
     user_request, completed = mark_request(
-        request, request_id, Request.STATUS_OPEN, None, False
+        request.user, request_id, Request.STATUS_OPEN, None, False
     )
     if completed:
         user_request.notify_request_reopened(request.user)
@@ -588,8 +590,9 @@ def mark_request_open(request: HttpRequest, request_id: int):
 @permissions_required(["blueprints.basic_access", "blueprints.manage_requests"])
 @require_POST
 def mark_request_cancelled(request: HttpRequest, request_id: int):
+    """Render view to mark a blueprint request a canceled."""
     user_request, completed = mark_request(
-        request,
+        request.user,
         request_id,
         Request.STATUS_CANCELLED,
         None,
@@ -626,6 +629,7 @@ def mark_request_cancelled(request: HttpRequest, request_id: int):
 )
 @require_POST
 def remove_owner(request: HttpRequest, owner_id: int):
+    """Render view for removing a given owner."""
     owner = Owner.objects.filter(pk=owner_id, character__user=request.user).first()
     completed = False
     owner_name = None
