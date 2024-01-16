@@ -1,5 +1,7 @@
 """Regular views for Blueprints."""
 
+from typing import Optional, Tuple
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
@@ -113,21 +115,19 @@ def add_corporation_blueprint_owner(request: HttpRequest, token: Token):
                 % {
                     "corporation": format_html("<strong>{}</strong>", owner),
                     "character": format_html(
-                        "<strong>{}</strong>", owner.character.character.character_name
+                        "<strong>{}</strong>", owner.eve_character_strict.character_name
                     ),
                 }
             ),
         )
         if BLUEPRINTS_ADMIN_NOTIFICATIONS_ENABLED:
+            corporation_name = owner.corporation_strict.corporation_name
             notify_admins(
                 message=(
-                    f"{owner.corporation_strict.corporation_name} was added as new corporate"
+                    f"{corporation_name} was added as new corporation, "
                     f"blueprint owner by {request.user.username}."
                 ),
-                title=(
-                    f"{__title__}: blueprint owner added: "
-                    f"{owner.corporation_strict.corporation_name}"
-                ),
+                title=f"{__title__}: blueprint owner added: {corporation_name}",
             )
     return redirect("blueprints:index")
 
@@ -358,7 +358,7 @@ def view_blueprint_modal(request: HttpRequest):
 def view_request_modal(request: HttpRequest):
     """Render modal view for a blueprint request."""
     user_request = get_object_or_404(Request, pk=request.GET.get("request_id"))
-    context = {"request": convert_request(user_request, request.user)}
+    context = {"request": convert_request_for_template(user_request, request.user)}
     return render(request, "blueprints/modals/view_request_content.html", context)
 
 
@@ -389,7 +389,8 @@ def create_request(request: HttpRequest):
     return redirect("blueprints:index")
 
 
-def convert_request(request: Request, user) -> dict:
+def convert_request_for_template(request: Request, user) -> dict:
+    """Convert a blueprint request for a template."""
     variant = (
         EveType.IconVariant.BPC if request.blueprint.runs else EveType.IconVariant.BPO
     )
@@ -416,7 +417,7 @@ def convert_request(request: Request, user) -> dict:
         "type_name": request.blueprint.eve_type.name,
         "owner_name": request.blueprint.owner.name,
         "owner_type": owner_type,
-        "requestor": request.requesting_user.profile.main_character.character_name,
+        "requestor": request.requesting_character_name(),
         "location": location,
         "material_efficiency": request.blueprint.material_efficiency,
         "time_efficiency": request.blueprint.time_efficiency,
@@ -429,13 +430,14 @@ def convert_request(request: Request, user) -> dict:
 @login_required
 @permissions_required("blueprints.request_blueprints")
 def list_user_requests(request: HttpRequest):
-    request_rows = []
+    """Render view to list the blueprint requests of the current user."""
 
     request_query = Request.objects.select_related_default().filter(
         requesting_user=request.user, closed_at=None
     )
-    for req in request_query:
-        request_rows.append(convert_request(req, request.user))
+    request_rows = [
+        convert_request_for_template(req, request.user) for req in request_query
+    ]
 
     return JsonResponse(request_rows, safe=False)
 
@@ -443,23 +445,27 @@ def list_user_requests(request: HttpRequest):
 @login_required
 @permissions_required("blueprints.manage_requests")
 def list_open_requests(request: HttpRequest):
-    request_rows = []
+    """Render view to list the open blueprint requests."""
 
     requests = Request.objects.select_related_default().requests_fulfillable_by_user(
         request.user
     ) | Request.objects.select_related_default().requests_being_fulfilled_by_user(
         request.user
     )
-
-    for req in requests:
-        request_rows.append(convert_request(req, request.user))
+    request_rows = [convert_request_for_template(req, request.user) for req in requests]
 
     return JsonResponse(request_rows, safe=False)
 
 
 def mark_request(
-    request, request_id, status, fulfulling_user, closed, *, can_requestor_edit=False
-):
+    request: HttpRequest,
+    request_id: int,
+    status: str,
+    fulfulling_user: Optional[User],
+    closed: bool,
+    *,
+    can_requestor_edit: bool = False,
+) -> Tuple[Request, bool]:
     completed = False
     user_request = get_object_or_404(Request, pk=request_id)
     character_ownerships = request.user.character_ownerships.select_related(
@@ -475,6 +481,7 @@ def mark_request(
     )
     is_requestor_owner_of_blueprint = (
         not user_request.blueprint.owner.corporation
+        and user_request.blueprint.owner.character
         and user_request.blueprint.owner.character.pk in character_ownership_ids
     )
 

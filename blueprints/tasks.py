@@ -50,7 +50,7 @@ TASK_ESI_KWARGS = {
         },
     }
 )
-def update_blueprints_for_owner(owner_pk):
+def update_blueprints_for_owner(owner_pk: int):
     """fetches all blueprints for owner from ESI"""
     owner = Owner.objects.get(pk=owner_pk)
     owner.update_blueprints_esi()
@@ -66,7 +66,7 @@ def update_blueprints_for_owner(owner_pk):
         },
     }
 )
-def update_industry_jobs_for_owner(owner_pk):
+def update_industry_jobs_for_owner(owner_pk: int):
     """fetches all industry jobs for owner from ESI"""
     owner = Owner.objects.get(pk=owner_pk)
     owner.update_industry_jobs_esi()

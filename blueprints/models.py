@@ -772,24 +772,24 @@ class Request(models.Model):
         default_permissions = ()
 
     def __str__(self) -> str:
-        character_name = self._requesting_character_name()
+        character_name = self.requesting_character_name()
         type_name = self.blueprint.eve_type.name
         return f"{character_name}'s request for {type_name}"
 
     def __repr__(self) -> str:
-        character_name = self._requesting_character_name()
+        character_name = self.requesting_character_name()
         return (
             f"{self.__class__.__name__}(id={self.pk}, "
             f"requesting_user='{character_name}', "
             f"type_name='{self.blueprint.eve_type.name}')"
         )
 
-    def _requesting_character_name(self) -> str:
+    def requesting_character_name(self) -> str:
         """Return main character's name of the requesting user safely."""
         try:
             return self.requesting_user.profile.main_character.character_name
         except AttributeError:
-            return "(no main)"
+            return "?"
 
     def notify_new_request(self) -> None:
         for approver in self.approvers():

@@ -87,7 +87,7 @@ class BlueprintQuerySet(models.QuerySet):
 
 
 class BlueprintManagerBase(models.Manager):
-    def user_has_access(self, user) -> models.QuerySet:
+    def user_has_access(self, user: User) -> models.QuerySet:
         """Filter query to blueprints a given user has access to."""
         from .models import Owner
 
