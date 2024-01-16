@@ -2,14 +2,17 @@
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
 from django.db import transaction
-from django.http import JsonResponse
+from django.db.models import QuerySet
+from django.http import HttpRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.html import format_html
 from django.utils.timezone import now
-from django.utils.translation import gettext_lazy
+from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_POST
 from esi.decorators import token_required
+from esi.models import Token
 from eveuniverse.models import EveType
 
 from allianceauth.authentication.decorators import permissions_required
@@ -33,13 +36,14 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 @login_required
 @permissions_required("blueprints.basic_access")
-def index(request):
+def index(request: HttpRequest):
+    """Render index view."""
     if request.user.has_perm("blueprints.manage_requests"):
         request_count = Request.objects.open_requests_total_count(request.user)
     else:
         request_count = None
     context = {
-        "page_title": gettext_lazy(__title__),
+        "page_title": _(__title__),
         "data_tables_page_length": BLUEPRINTS_DEFAULT_PAGE_LENGTH,
         "data_tables_paging": BLUEPRINTS_PAGING_ENABLED,
         "request_count": request_count,
@@ -57,7 +61,8 @@ def index(request):
         "esi-industry.read_corporation_jobs.v1",
     ]
 )
-def add_corporate_blueprint_owner(request, token):
+def add_corporation_blueprint_owner(request: HttpRequest, token: Token):
+    """Render view for adding an owner for corporation blueprints."""
     token_char = get_object_or_404(EveCharacter, character_id=token.character_id)
     success = True
     try:
@@ -68,7 +73,7 @@ def add_corporate_blueprint_owner(request, token):
         messages.error(
             request,
             format_html(
-                gettext_lazy(
+                _(
                     "You can only use your main or alt characters "
                     "to add corporations. "
                     "However, character %s is neither. "
@@ -90,17 +95,16 @@ def add_corporate_blueprint_owner(request, token):
             )
 
         with transaction.atomic():
-            owner, _ = Owner.objects.update_or_create(
+            owner = Owner.objects.update_or_create(
                 corporation=corporation, defaults={"character": owned_char}
-            )
-            owner.save()
+            )[0]
 
         tasks.update_blueprints_for_owner.delay(owner_pk=owner.pk)
         tasks.update_locations_for_owner.delay(owner_pk=owner.pk)
         messages.info(
             request,
             format_html(
-                gettext_lazy(
+                _(
                     "%(corporation)s has been added with %(character)s "
                     "as sync character. We have started fetching blueprints "
                     "for this corporation. You will receive a report once "
@@ -138,7 +142,8 @@ def add_corporate_blueprint_owner(request, token):
         "esi-industry.read_character_jobs.v1",
     ]
 )
-def add_personal_blueprint_owner(request, token):
+def add_personal_blueprint_owner(request: HttpRequest, token: Token):
+    """Render view for adding an owner for personal blueprints."""
     token_char = get_object_or_404(EveCharacter, character_id=token.character_id)
     success = True
     try:
@@ -149,7 +154,7 @@ def add_personal_blueprint_owner(request, token):
         messages.error(
             request,
             format_html(
-                gettext_lazy(
+                _(
                     "You can only use your main or alt characters "
                     "to add corporations. "
                     "However, character %s is neither. "
@@ -162,18 +167,16 @@ def add_personal_blueprint_owner(request, token):
 
     if success:
         with transaction.atomic():
-            owner, _ = Owner.objects.update_or_create(
+            owner = Owner.objects.update_or_create(
                 corporation=None, character=owned_char
-            )
-
-            owner.save()
+            )[0]
 
         tasks.update_blueprints_for_owner.delay(owner_pk=owner.pk)
         tasks.update_locations_for_owner.delay(owner_pk=owner.pk)
         messages.info(
             request,
             format_html(
-                gettext_lazy(
+                _(
                     "%(character)s has been added. We have started fetching blueprints "
                     "for this character. You will receive a report once "
                     "the process is finished."
@@ -199,7 +202,10 @@ def add_personal_blueprint_owner(request, token):
     return redirect("blueprints:index")
 
 
-def convert_blueprint(blueprint: Blueprint, user, details=False) -> dict:
+def convert_blueprint_for_template(
+    blueprint: Blueprint, user: User, details=False
+) -> dict:
+    """Convert a blueprint for use in a template."""
     variant = EveType.IconVariant.BPC if blueprint.runs else EveType.IconVariant.BPO
     icon = format_html(
         '<img src="{}" width="{}" height="{}">',
@@ -210,9 +216,7 @@ def convert_blueprint(blueprint: Blueprint, user, details=False) -> dict:
     runs = "" if not blueprint.runs or blueprint.runs == -1 else blueprint.runs
     original = "✓" if not blueprint.runs or blueprint.runs == -1 else ""
     filter_is_original = (
-        gettext_lazy("Yes")
-        if not blueprint.runs or blueprint.runs == -1
-        else gettext_lazy("No")
+        _("Yes") if not blueprint.runs or blueprint.runs == -1 else _("No")
     )
     if blueprint.owner.corporation:
         owner_type = "corporation"
@@ -223,7 +227,7 @@ def convert_blueprint(blueprint: Blueprint, user, details=False) -> dict:
         location_name = blueprint.location.full_qualified_name()
         location_detail = blueprint.location_flag_obj.label
     else:
-        location_name = location_detail = gettext_lazy("(no access)")
+        location_name = location_detail = _("(no access)")
     summary = {
         "icn": icon,
         "qty": blueprint.quantity,
@@ -258,7 +262,7 @@ def convert_blueprint(blueprint: Blueprint, user, details=False) -> dict:
 
 # @login_required
 # @permissions_required("blueprints.basic_access")
-# def list_blueprints(request):
+# def list_blueprints(request:  HttpRequest):
 #     blueprint_rows = [
 #         convert_blueprint(blueprint, request.user)
 #         for blueprint in Blueprint.objects.user_has_access(request.user)
@@ -268,8 +272,10 @@ def convert_blueprint(blueprint: Blueprint, user, details=False) -> dict:
 
 @login_required
 @permissions_required("blueprints.basic_access")
-def list_blueprints_ffd(request):
-    """filterDropDown endpoint with server-side processing for blueprints list"""
+def list_blueprints_ffd(request: HttpRequest) -> JsonResponse:
+    """Render view for filterDropDown endpoint to enable
+    server-side processing for blueprints list.
+    """
     result = {}
     blueprint_query = Blueprint.objects.user_has_access(
         request.user
@@ -308,19 +314,20 @@ def list_blueprints_ffd(request):
     "blueprints.add_personal_blueprint_owner",
     "blueprints.add_corporate_blueprint_owner",
 )
-def list_user_owners(request):
-    owners = Owner.objects.filter(
+def list_user_owners(request: HttpRequest) -> JsonResponse:
+    """Return list of owners"""
+    owners: QuerySet[Owner] = Owner.objects.filter(
         character__user=request.user
     ).annotate_blueprint_count()
     results = []
     for owner in owners:
         if owner.corporation:
             owner_type = "corporate"
-            owner_type_display = gettext_lazy("Corporate")
+            owner_type_display = _("Corporate")
             owner_name = owner.corporation.corporation_name
         else:
             owner_type = "personal"
-            owner_type_display = gettext_lazy("Personal")
+            owner_type_display = _("Personal")
             owner_name = owner.eve_character_strict.character_name
         results.append(
             {
@@ -335,15 +342,21 @@ def list_user_owners(request):
 
 
 @login_required
-def view_blueprint_modal(request):
+def view_blueprint_modal(request: HttpRequest):
+    """Render modal view for a blueprint."""
     blueprint = get_object_or_404(Blueprint, pk=request.GET.get("blueprint_id"))
-    context = {"blueprint": convert_blueprint(blueprint, request.user, details=True)}
+    context = {
+        "blueprint": convert_blueprint_for_template(
+            blueprint, request.user, details=True
+        )
+    }
     return render(request, "blueprints/modals/view_blueprint_content.html", context)
 
 
 @login_required
 @permissions_required(("blueprints.request_blueprints", "blueprints.manage_requests"))
-def view_request_modal(request):
+def view_request_modal(request: HttpRequest):
+    """Render modal view for a blueprint request."""
     user_request = get_object_or_404(Request, pk=request.GET.get("request_id"))
     context = {"request": convert_request(user_request, request.user)}
     return render(request, "blueprints/modals/view_request_content.html", context)
@@ -351,7 +364,8 @@ def view_request_modal(request):
 
 @login_required
 @permissions_required("blueprints.request_blueprints")
-def create_request(request):
+def create_request(request: HttpRequest):
+    """Render view to create a blueprint request."""
     if request.method == "POST":
         requested = get_object_or_404(Blueprint, pk=request.POST.get("pk"))
         runs = request.POST.get("runs")
@@ -368,7 +382,7 @@ def create_request(request):
         messages.info(
             request,
             format_html(
-                gettext_lazy("A copy of %(blueprint)s has been requested.")
+                _("A copy of %(blueprint)s has been requested.")
                 % {"blueprint": requested.eve_type.name}
             ),
         )
@@ -394,7 +408,7 @@ def convert_request(request: Request, user) -> dict:
     if user.has_perm("blueprints.view_blueprint_locations"):
         location = request.blueprint.location.full_qualified_name()
     else:
-        location = gettext_lazy("(Unknown)")
+        location = _("(Unknown)")
 
     return {
         "request_id": request.pk,
@@ -414,7 +428,7 @@ def convert_request(request: Request, user) -> dict:
 
 @login_required
 @permissions_required("blueprints.request_blueprints")
-def list_user_requests(request):
+def list_user_requests(request: HttpRequest):
     request_rows = []
 
     request_query = Request.objects.select_related_default().filter(
@@ -428,7 +442,7 @@ def list_user_requests(request):
 
 @login_required
 @permissions_required("blueprints.manage_requests")
-def list_open_requests(request):
+def list_open_requests(request: HttpRequest):
     request_rows = []
 
     requests = Request.objects.select_related_default().requests_fulfillable_by_user(
@@ -485,7 +499,7 @@ def mark_request(
 @login_required
 @permissions_required("blueprints.manage_requests")
 @require_POST
-def mark_request_fulfilled(request, request_id):
+def mark_request_fulfilled(request: HttpRequest, request_id: int):
     user_request, completed = mark_request(
         request, request_id, Request.STATUS_FULFILLED, request.user, True
     )
@@ -494,9 +508,7 @@ def mark_request_fulfilled(request, request_id):
         messages.info(
             request,
             format_html(
-                gettext_lazy(
-                    "The request for %(blueprint)s has been closed as fulfilled."
-                )
+                _("The request for %(blueprint)s has been closed as fulfilled.")
                 % {"blueprint": user_request.blueprint.eve_type.name}
             ),
         )
@@ -504,7 +516,7 @@ def mark_request_fulfilled(request, request_id):
         messages.error(
             request,
             format_html(
-                gettext_lazy("Fulfilling the request for %(blueprint)s has failed.")
+                _("Fulfilling the request for %(blueprint)s has failed.")
                 % {"blueprint": user_request.blueprint.eve_type.name}
             ),
         )
@@ -514,7 +526,7 @@ def mark_request_fulfilled(request, request_id):
 @login_required
 @permissions_required("blueprints.manage_requests")
 @require_POST
-def mark_request_in_progress(request, request_id):
+def mark_request_in_progress(request: HttpRequest, request_id: int):
     user_request, completed = mark_request(
         request, request_id, Request.STATUS_IN_PROGRESS, request.user, False
     )
@@ -523,9 +535,7 @@ def mark_request_in_progress(request, request_id):
         messages.info(
             request,
             format_html(
-                gettext_lazy(
-                    "The request for %(blueprint)s has been marked as in progress."
-                )
+                _("The request for %(blueprint)s has been marked as in progress.")
                 % {"blueprint": user_request.blueprint.eve_type.name}
             ),
         )
@@ -533,9 +543,7 @@ def mark_request_in_progress(request, request_id):
         messages.error(
             request,
             format_html(
-                gettext_lazy(
-                    "Marking the request for %(blueprint)s as in progress has failed."
-                )
+                _("Marking the request for %(blueprint)s as in progress has failed.")
                 % {"blueprint": user_request.blueprint.eve_type.name}
             ),
         )
@@ -545,7 +553,7 @@ def mark_request_in_progress(request, request_id):
 @login_required
 @permissions_required("blueprints.manage_requests")
 @require_POST
-def mark_request_open(request, request_id):
+def mark_request_open(request: HttpRequest, request_id: int):
     user_request, completed = mark_request(
         request, request_id, Request.STATUS_OPEN, None, False
     )
@@ -554,7 +562,7 @@ def mark_request_open(request, request_id):
         messages.info(
             request,
             format_html(
-                gettext_lazy("The request for %(blueprint)s has been re-opened.")
+                _("The request for %(blueprint)s has been re-opened.")
                 % {"blueprint": user_request.blueprint.eve_type.name}
             ),
         )
@@ -562,7 +570,7 @@ def mark_request_open(request, request_id):
         messages.error(
             request,
             format_html(
-                gettext_lazy("Re-opening the request for %(blueprint)s has failed.")
+                _("Re-opening the request for %(blueprint)s has failed.")
                 % {"blueprint": user_request.blueprint.eve_type.name}
             ),
         )
@@ -572,7 +580,7 @@ def mark_request_open(request, request_id):
 @login_required
 @permissions_required(["blueprints.basic_access", "blueprints.manage_requests"])
 @require_POST
-def mark_request_cancelled(request, request_id):
+def mark_request_cancelled(request: HttpRequest, request_id: int):
     user_request, completed = mark_request(
         request,
         request_id,
@@ -589,9 +597,7 @@ def mark_request_cancelled(request, request_id):
         messages.info(
             request,
             format_html(
-                gettext_lazy(
-                    "The request for %(blueprint)s has been closed as cancelled."
-                )
+                _("The request for %(blueprint)s has been closed as cancelled.")
                 % {"blueprint": user_request.blueprint.eve_type.name}
             ),
         )
@@ -599,7 +605,7 @@ def mark_request_cancelled(request, request_id):
         messages.error(
             request,
             format_html(
-                gettext_lazy("Cancelling the request for %(blueprint)s has failed.")
+                _("Cancelling the request for %(blueprint)s has failed.")
                 % {"blueprint": user_request.blueprint.eve_type.name}
             ),
         )
@@ -612,7 +618,7 @@ def mark_request_cancelled(request, request_id):
     "blueprints.add_corporate_blueprint_owner",
 )
 @require_POST
-def remove_owner(request, owner_id):
+def remove_owner(request: HttpRequest, owner_id: int):
     owner = Owner.objects.filter(pk=owner_id, character__user=request.user).first()
     completed = False
     owner_name = None
@@ -630,13 +636,13 @@ def remove_owner(request, owner_id):
         messages.info(
             request,
             format_html(
-                gettext_lazy("%(owner)s has been removed as a blueprint owner.")
+                _("%(owner)s has been removed as a blueprint owner.")
                 % {"owner": owner_name}
             ),
         )
     else:
         messages.error(
             request,
-            format_html(gettext_lazy("Removing the blueprint owner has failed.")),
+            format_html(_("Removing the blueprint owner has failed.")),
         )
     return redirect("blueprints:index")

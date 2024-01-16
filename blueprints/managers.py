@@ -30,6 +30,7 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 class BlueprintQuerySet(models.QuerySet):
     def annotate_is_bpo(self) -> models.QuerySet:
+        """Add is_bop Annotation to query."""
         return self.annotate(
             is_bpo=Case(
                 When(runs=None, then=Value("yes")),
@@ -39,6 +40,7 @@ class BlueprintQuerySet(models.QuerySet):
         )
 
     def annotate_owner_name(self) -> models.QuerySet:
+        """Add owner_name Annotation to query."""
         return self.select_related(
             "owner__character__character", "owner__corporation"
         ).annotate(
@@ -86,6 +88,7 @@ class BlueprintQuerySet(models.QuerySet):
 
 class BlueprintManagerBase(models.Manager):
     def user_has_access(self, user) -> models.QuerySet:
+        """Filter query to blueprints a given user has access to."""
         from .models import Owner
 
         corporation_ids = set(
@@ -139,7 +142,7 @@ class LocationQuerySet(models.QuerySet):
 
 
 class LocationManagerBase(models.Manager):
-    """Manager for Location model
+    """A manager for the Location model.
 
     We recommend preferring the "async" variants, because it includes protection
     against exceeding the ESI error limit due to characters no longer having access
@@ -157,7 +160,7 @@ class LocationManagerBase(models.Manager):
     _UPDATE_EMPTY_GRACE_MINUTES = 5
 
     def get_or_create_esi(self, id: int, token: Token) -> Tuple[Any, bool]:
-        """gets or creates location object with data fetched from ESI
+        """Get or create location object with data fetched from ESI.
 
         Stale locations will always be updated.
         Empty locations will always be updated after grace period as passed
@@ -165,7 +168,7 @@ class LocationManagerBase(models.Manager):
         return self._get_or_create_esi(id=id, token=token, update_async=False)
 
     def get_or_create_esi_async(self, id: int, token: Token) -> Tuple[Any, bool]:
-        """gets or creates location object with data fetched from ESI asynchronous"""
+        """Get or create location object with data fetched from ESI asynchronous."""
         return self._get_or_create_esi(id=id, token=token, update_async=True)
 
     def _get_or_create_esi(
@@ -194,11 +197,11 @@ class LocationManagerBase(models.Manager):
         return location, created
 
     def update_or_create_esi_async(self, id: int, token: Token) -> Tuple[Any, bool]:
-        """updates or creates location object with data fetched from ESI asynchronous"""
+        """Update or create location object with data fetched from ESI asynchronous."""
         return self._update_or_create_esi(id=id, token=token, update_async=True)
 
     def update_or_create_esi(self, id: int, token: Token) -> Tuple[Any, bool]:
-        """updates or creates location object with data fetched from ESI synchronous
+        """Update or create location object with data fetched from ESI synchronous.
 
         The preferred method to use is: `update_or_create_esi_async()`,
         since it protects against exceeding the ESI error limit and which can happen

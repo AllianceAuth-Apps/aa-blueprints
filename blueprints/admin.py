@@ -1,6 +1,6 @@
 """Admin site for Blueprints."""
 
-# pylint: disable = missing-class-docstring
+# pylint: disable = missing-class-docstring, missing-function-docstring
 
 from typing import Any
 
