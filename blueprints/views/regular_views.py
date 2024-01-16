@@ -457,9 +457,9 @@ def list_open_requests(request: HttpRequest):
     return JsonResponse(request_rows, safe=False)
 
 
-def mark_request(
+def _mark_request(
+    user_request: Request,
     user: User,
-    request_id: int,
     status: str,
     fulfulling_user: Optional[User],
     closed: bool,
@@ -468,7 +468,6 @@ def mark_request(
 ) -> Tuple[Request, bool]:
     """Change the status of a blueprint request."""
     completed = False
-    user_request = get_object_or_404(Request, pk=request_id)
     character_ownerships = user.character_ownerships.select_related("character").all()
     corporation_ids = {
         character.character.corporation_id for character in character_ownerships
@@ -507,10 +506,15 @@ def mark_request(
 @require_POST
 def mark_request_fulfilled(request: HttpRequest, request_id: int):
     """Render view to mark a blueprint request as fulfilled."""
-    user_request, completed = mark_request(
-        request.user, request_id, Request.STATUS_FULFILLED, request.user, True
+    user_request = get_object_or_404(Request, pk=request_id)
+    is_completed = _mark_request(
+        user_request=user_request,
+        user=request.user,
+        status=Request.STATUS_FULFILLED,
+        fulfulling_user=request.user,
+        closed=True,
     )
-    if completed:
+    if is_completed:
         user_request.notify_request_fulfilled()
         messages.info(
             request,
@@ -535,10 +539,15 @@ def mark_request_fulfilled(request: HttpRequest, request_id: int):
 @require_POST
 def mark_request_in_progress(request: HttpRequest, request_id: int):
     """Render view to mark a blueprint request as in progress."""
-    user_request, completed = mark_request(
-        request.user, request_id, Request.STATUS_IN_PROGRESS, request.user, False
+    user_request = get_object_or_404(Request, pk=request_id)
+    is_completed = _mark_request(
+        user_request=user_request,
+        user=request.user,
+        status=Request.STATUS_IN_PROGRESS,
+        fulfulling_user=request.user,
+        closed=False,
     )
-    if completed:
+    if is_completed:
         user_request.notify_request_in_progress()
         messages.info(
             request,
@@ -563,10 +572,15 @@ def mark_request_in_progress(request: HttpRequest, request_id: int):
 @require_POST
 def mark_request_open(request: HttpRequest, request_id: int):
     """Render view to mark a blueprint request as open."""
-    user_request, completed = mark_request(
-        request.user, request_id, Request.STATUS_OPEN, None, False
+    user_request = get_object_or_404(Request, pk=request_id)
+    is_completed = _mark_request(
+        user_request=user_request,
+        user=request.user,
+        status=Request.STATUS_OPEN,
+        fulfulling_user=None,
+        closed=False,
     )
-    if completed:
+    if is_completed:
         user_request.notify_request_reopened(request.user)
         messages.info(
             request,
@@ -591,15 +605,16 @@ def mark_request_open(request: HttpRequest, request_id: int):
 @require_POST
 def mark_request_cancelled(request: HttpRequest, request_id: int):
     """Render view to mark a blueprint request a canceled."""
-    user_request, completed = mark_request(
-        request.user,
-        request_id,
-        Request.STATUS_CANCELLED,
-        None,
-        True,
+    user_request = get_object_or_404(Request, pk=request_id)
+    is_completed = _mark_request(
+        user_request=user_request,
+        user=request.user,
+        status=Request.STATUS_CANCELLED,
+        fulfulling_user=None,
+        closed=True,
         can_requestor_edit=True,
     )
-    if completed:
+    if is_completed:
         if request.user == user_request.requesting_user:
             user_request.notify_request_canceled_by_requestor()
         else:
