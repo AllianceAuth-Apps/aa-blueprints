@@ -75,6 +75,5 @@ disable = [
     "too-few-public-methods",
     "fixme",
     "too-many-arguments",
-    "missing-class-docstring",    # FIXME
     "missing-function-docstring", # FIXME
 ]

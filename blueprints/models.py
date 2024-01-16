@@ -336,7 +336,11 @@ class Owner(models.Model):
 
 
 class Blueprint(models.Model):
+    """A blueprint in Eve Online."""
+
     class LocationFlag(models.TextChoices):
+        """A flag denoting the location of a blueprint."""
+
         ASSET_SAFETY = "AssetSafety", _("Asset Safety")
         AUTO_FIT = "AutoFit", _("Auto Fit")
         BONUS = "Bonus", _("Bonus")
@@ -550,12 +554,16 @@ class Blueprint(models.Model):
 
 
 class IndustryJob(models.Model):
+    """An industry job in Eve Online."""
+
     id = models.PositiveBigIntegerField(
         primary_key=True,
         help_text=("Eve Online job ID"),
     )
 
     class Activity(models.IntegerChoices):
+        """The type of activity an industry job is performing."""
+
         MANUFACTURING = 1, _("Manufacturing")
         RESEARCHING_TECHNOLOGY = 2, _("Researching Technology")
         RESEARCHING_TIME_EFFICIENCY = 3, _("Researching Time Efficiency")
@@ -713,6 +721,8 @@ class Location(models.Model):
 
 
 class Request(models.Model):
+    """A request to use a specific blueprint."""
+
     blueprint = models.ForeignKey(
         Blueprint,
         on_delete=models.CASCADE,

@@ -20,6 +20,8 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 # pylint: disable = too-many-ancestors
 class BlueprintListJson(BaseDatatableView):
+    """View for creating a list view of blueprints for datatables."""
+
     # The model we're going to show
     model = Blueprint
 

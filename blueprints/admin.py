@@ -1,5 +1,7 @@
 """Admin site for Blueprints."""
 
+# pylint: disable = missing-class-docstring
+
 from typing import Any
 
 from django.contrib import admin

@@ -1,5 +1,7 @@
 """Managers for Blueprints."""
 
+# pylint: disable = missing-class-docstring
+
 import datetime as dt
 from typing import Any, Tuple
 
