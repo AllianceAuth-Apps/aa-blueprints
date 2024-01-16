@@ -137,7 +137,7 @@ class Owner(models.Model):
                 else:
                     asset_locations[location_id] = [asset["item_id"]]
 
-        for location_id in asset_locations.keys():
+        for location_id in asset_locations:
             asset = assets_by_id[location_id]
             parent_location = asset["location_id"]
             parent = get_or_create_location_async(parent_location, token=token)
@@ -293,7 +293,7 @@ class Owner(models.Model):
         ).results()
 
     @fetch_token_for_owner(["esi-corporations.read_blueprints.v1"])
-    def _fetch_corporate_blueprints(self, token) -> list:
+    def _fetch_corporate_blueprints(self, token: Token) -> list:
         blueprints = esi.client.Corporation.get_corporations_corporation_id_blueprints(
             corporation_id=self.corporation_strict.corporation_id,
             token=token.valid_access_token(),
@@ -301,7 +301,7 @@ class Owner(models.Model):
         return blueprints
 
     @fetch_token_for_owner(["esi-characters.read_blueprints.v1"])
-    def _fetch_personal_blueprints(self, token) -> list:
+    def _fetch_personal_blueprints(self, token: Token) -> list:
         blueprints = esi.client.Character.get_characters_character_id_blueprints(
             character_id=self.eve_character_strict.character_id,
             token=token.valid_access_token(),
@@ -309,7 +309,7 @@ class Owner(models.Model):
         return blueprints
 
     @fetch_token_for_owner(["esi-industry.read_corporation_jobs.v1"])
-    def _fetch_corporate_industry_jobs(self, token) -> list:
+    def _fetch_corporate_industry_jobs(self, token: Token) -> list:
         jobs = esi.client.Industry.get_corporations_corporation_id_industry_jobs(
             corporation_id=self.corporation_strict.corporation_id,
             token=token.valid_access_token(),
@@ -317,7 +317,7 @@ class Owner(models.Model):
         return jobs
 
     @fetch_token_for_owner(["esi-industry.read_character_jobs.v1"])
-    def _fetch_personal_industry_jobs(self, token) -> list:
+    def _fetch_personal_industry_jobs(self, token: Token) -> list:
         jobs = esi.client.Industry.get_characters_character_id_industry_jobs(
             character_id=self.eve_character_strict.character_id,
             token=token.valid_access_token(),
