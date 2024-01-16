@@ -13,6 +13,8 @@ and this project adheres to [PEP-440](https://www.python.org/dev/peps/pep-0440/)
 
 - Added support for AA4
 - Fix pylint issues and refactor
+- Fixed pylint issues and refactor
+- Added pylint checks
 
 ## [1.6.0] - 2023-10-04
 

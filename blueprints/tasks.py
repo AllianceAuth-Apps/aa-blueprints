@@ -130,12 +130,7 @@ def update_structure_esi(self, id: int, token_pk: int):
     """Updates a structure object from ESI
     and retries later if the ESI error limit has already been reached
     """
-    try:
-        token = Token.objects.get(pk=token_pk)
-    except Token.DoesNotExist as ex:
-        raise Token.DoesNotExist(
-            f"Location #{id}: Requested token with pk {token_pk} does not exist"
-        ) from ex
+    token = Token.objects.get(pk=token_pk)
 
     try:
         Location.objects.structure_update_or_create_esi(id, token)
