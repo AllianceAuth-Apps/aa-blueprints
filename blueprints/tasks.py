@@ -51,7 +51,7 @@ TASK_ESI_KWARGS = {
     }
 )
 def update_blueprints_for_owner(owner_pk: int):
-    """fetches all blueprints for owner from ESI"""
+    """Fetch all blueprints for an owner from ESI."""
     owner = Owner.objects.get(pk=owner_pk)
     owner.update_blueprints_esi()
 
@@ -67,7 +67,7 @@ def update_blueprints_for_owner(owner_pk: int):
     }
 )
 def update_industry_jobs_for_owner(owner_pk: int):
-    """fetches all industry jobs for owner from ESI"""
+    """Fetche all industry jobs for an owner from ESI."""
     owner = Owner.objects.get(pk=owner_pk)
     owner.update_industry_jobs_esi()
 
@@ -83,13 +83,14 @@ def update_industry_jobs_for_owner(owner_pk: int):
     }
 )
 def update_locations_for_owner(owner_pk: int):
-    """fetches all blueprints for owner from ESI"""
+    """Fetch all blueprints for an owner from ESI."""
     owner = Owner.objects.get(pk=owner_pk)
     owner.update_locations_esi()
 
 
 @shared_task(**TASK_DEFAULT_KWARGS)
 def update_all_blueprints():
+    """Update all blueprints."""
     for owner in Owner.objects.filter(is_active=True):
         update_blueprints_for_owner.apply_async(
             kwargs={"owner_pk": owner.pk}, priority=DEFAULT_TASK_PRIORITY
@@ -98,6 +99,7 @@ def update_all_blueprints():
 
 @shared_task(**TASK_DEFAULT_KWARGS)
 def update_all_industry_jobs():
+    """Update all industry jobs."""
     for owner in Owner.objects.filter(is_active=True):
         update_industry_jobs_for_owner.apply_async(
             kwargs={"owner_pk": owner.pk}, priority=DEFAULT_TASK_PRIORITY
@@ -106,6 +108,7 @@ def update_all_industry_jobs():
 
 @shared_task(**TASK_DEFAULT_KWARGS)
 def update_all_locations():
+    """Update all locations."""
     for owner in Owner.objects.filter(is_active=True):
         update_locations_for_owner.apply_async(
             kwargs={"owner_pk": owner.pk}, priority=DEFAULT_TASK_PRIORITY
