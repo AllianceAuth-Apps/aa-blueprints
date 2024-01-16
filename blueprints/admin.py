@@ -1,5 +1,7 @@
 """Admin site for Blueprints."""
 
+# pylint: disable = missing-class-docstring, missing-function-docstring
+
 from typing import Any
 
 from django.contrib import admin
@@ -29,6 +31,7 @@ class LocationNameListFilter(admin.SimpleListFilter):
     def queryset(self, request, queryset):
         if value := self.value():
             return queryset.filter(location_name=value)
+        return None
 
 
 class BpoListFilter(admin.SimpleListFilter):
@@ -44,6 +47,7 @@ class BpoListFilter(admin.SimpleListFilter):
     def queryset(self, request, queryset):
         if value := self.value():
             return queryset.filter(is_bpo=value)
+        return None
 
 
 class LocationFlagListFilter(admin.SimpleListFilter):
@@ -62,6 +66,7 @@ class LocationFlagListFilter(admin.SimpleListFilter):
     def queryset(self, request, queryset):
         if value := self.value():
             return queryset.filter(location_flag=value)
+        return None
 
 
 @admin.register(Blueprint)
@@ -136,6 +141,7 @@ class LocationHasBlueprintsListFilter(admin.SimpleListFilter):
             return queryset.annotate_blueprint_count().filter(blueprint_count__gt=0)
         if value == "no":
             return queryset.annotate_blueprint_count().filter(blueprint_count=0)
+        return None
 
 
 class LocationHasNameListFilter(admin.SimpleListFilter):
@@ -151,6 +157,7 @@ class LocationHasNameListFilter(admin.SimpleListFilter):
             return queryset.exclude(name="")
         if value == "no":
             return queryset.filter(name="")
+        return None
 
 
 @admin.register(Location)

@@ -28,7 +28,6 @@ TASK_DEFAULT_KWARGS = {
 TASK_ESI_KWARGS = {
     **TASK_DEFAULT_KWARGS,
     **{
-        "bind": True,
         "autoretry_for": (
             OSError,
             HTTPBadGateway,
@@ -51,8 +50,8 @@ TASK_ESI_KWARGS = {
         },
     }
 )
-def update_blueprints_for_owner(self, owner_pk):
-    """fetches all blueprints for owner from ESI"""
+def update_blueprints_for_owner(owner_pk: int):
+    """Fetch all blueprints for an owner from ESI."""
     owner = Owner.objects.get(pk=owner_pk)
     owner.update_blueprints_esi()
 
@@ -67,8 +66,8 @@ def update_blueprints_for_owner(self, owner_pk):
         },
     }
 )
-def update_industry_jobs_for_owner(self, owner_pk):
-    """fetches all industry jobs for owner from ESI"""
+def update_industry_jobs_for_owner(owner_pk: int):
+    """Fetch all industry jobs for an owner from ESI."""
     owner = Owner.objects.get(pk=owner_pk)
     owner.update_industry_jobs_esi()
 
@@ -83,14 +82,15 @@ def update_industry_jobs_for_owner(self, owner_pk):
         },
     }
 )
-def update_locations_for_owner(self, owner_pk: int):
-    """fetches all blueprints for owner from ESI"""
+def update_locations_for_owner(owner_pk: int):
+    """Fetch all blueprints for an owner from ESI."""
     owner = Owner.objects.get(pk=owner_pk)
     owner.update_locations_esi()
 
 
 @shared_task(**TASK_DEFAULT_KWARGS)
 def update_all_blueprints():
+    """Update all blueprints."""
     for owner in Owner.objects.filter(is_active=True):
         update_blueprints_for_owner.apply_async(
             kwargs={"owner_pk": owner.pk}, priority=DEFAULT_TASK_PRIORITY
@@ -99,6 +99,7 @@ def update_all_blueprints():
 
 @shared_task(**TASK_DEFAULT_KWARGS)
 def update_all_industry_jobs():
+    """Update all industry jobs."""
     for owner in Owner.objects.filter(is_active=True):
         update_industry_jobs_for_owner.apply_async(
             kwargs={"owner_pk": owner.pk}, priority=DEFAULT_TASK_PRIORITY
@@ -107,6 +108,7 @@ def update_all_industry_jobs():
 
 @shared_task(**TASK_DEFAULT_KWARGS)
 def update_all_locations():
+    """Update all locations."""
     for owner in Owner.objects.filter(is_active=True):
         update_locations_for_owner.apply_async(
             kwargs={"owner_pk": owner.pk}, priority=DEFAULT_TASK_PRIORITY
@@ -117,6 +119,7 @@ def update_all_locations():
     **{
         **TASK_ESI_KWARGS,
         **{
+            "bind": True,
             "base": QueueOnce,
             "once": {"keys": ["id"], "graceful": True},
             "max_retries": None,
@@ -127,20 +130,17 @@ def update_structure_esi(self, id: int, token_pk: int):
     """Updates a structure object from ESI
     and retries later if the ESI error limit has already been reached
     """
-    try:
-        token = Token.objects.get(pk=token_pk)
-    except Token.DoesNotExist as ex:
-        raise Token.DoesNotExist(
-            f"Location #{id}: Requested token with pk {token_pk} does not exist"
-        ) from ex
+    token = Token.objects.get(pk=token_pk)
 
     try:
-        Location.objects.structure_update_or_create_esi(id, token)
+        Location.objects.structure_update_or_create_esi(id=id, token=token)
+
     except EsiOffline as ex:
         logger.warning(
             "Location #%s: ESI appears to be offline. Trying again in 30 minutes.", id
         )
         raise self.retry(countdown=30 * 60 + int(random.uniform(1, 20))) from ex
+
     except EsiErrorLimitExceeded as ex:
         logger.warning(
             "Location #%s: ESI error limit threshold reached. "

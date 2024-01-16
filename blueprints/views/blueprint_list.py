@@ -18,7 +18,10 @@ from blueprints.models import Blueprint
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
+# pylint: disable = too-many-ancestors
 class BlueprintListJson(BaseDatatableView):
+    """View for creating a list view of blueprints for datatables."""
+
     # The model we're going to show
     model = Blueprint
 
@@ -106,6 +109,7 @@ class BlueprintListJson(BaseDatatableView):
 
         return qs
 
+    # pylint: disable = too-many-return-statements
     def render_column(self, row, column):
         if column == "eve_type_icon":
             variant = EveType.IconVariant.BPC if row.runs else EveType.IconVariant.BPO

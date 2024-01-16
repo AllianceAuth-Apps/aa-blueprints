@@ -26,7 +26,7 @@ urlpatterns = [
     ),
     path(
         "owners/add/corporation",
-        regular_views.add_corporate_blueprint_owner,
+        regular_views.add_corporation_blueprint_owner,
         name="add_corporate_blueprint_owner",
     ),
     path(

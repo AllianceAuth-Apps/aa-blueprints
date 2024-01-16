@@ -12,7 +12,7 @@ from app_utils.testing import create_user_from_evecharacter, json_response_to_py
 from blueprints.models import Blueprint, Location, Owner, Request
 from blueprints.views.blueprint_list import BlueprintListJson
 from blueprints.views.regular_views import (
-    add_corporate_blueprint_owner,
+    add_corporation_blueprint_owner,
     add_personal_blueprint_owner,
     list_blueprints_ffd,
     list_user_owners,
@@ -432,7 +432,7 @@ class TestAddCorporationBlueprintOwner(TestCase):
         request.token = token
         middleware = SessionMiddleware(Mock())
         middleware.process_request(request)
-        orig_view = add_corporate_blueprint_owner.__wrapped__.__wrapped__.__wrapped__
+        orig_view = add_corporation_blueprint_owner.__wrapped__.__wrapped__.__wrapped__
         # when
         return orig_view(request, token)
 

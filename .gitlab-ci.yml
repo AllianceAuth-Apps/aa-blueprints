@@ -23,12 +23,12 @@ pre-commit:
     - python -V
     - pip install tox
 
-# pylint:
-#   stage: checks
-#   extends: .tox_setup
-#   image: python:3.10-bullseye
-#   script:
-#     - tox -e pylint
+pylint:
+  stage: checks
+  extends: .tox_setup
+  image: python:3.10-bullseye
+  script:
+    - tox -e pylint
 
 test-py38-dj40:
   extends: .tox_setup
@@ -56,6 +56,13 @@ test-py311-dj40:
   image: python:3.11-bullseye
   script:
     - tox -e py311-django40
+    - bash <(curl -s https://codecov.io/bash)
+
+test-py311-dj42:
+  extends: .tox_setup
+  image: python:3.11-bullseye
+  script:
+    - tox -e py311-django42
     - bash <(curl -s https://codecov.io/bash)
 
 deploy-pypi:

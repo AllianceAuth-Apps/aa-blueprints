@@ -1,9 +1,9 @@
 """Models for Blueprints."""
 
-from typing import List
-
 from django.contrib.auth.models import Permission, User
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
+from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from esi.errors import TokenError
 from esi.models import Token
@@ -18,7 +18,6 @@ from app_utils.django import users_with_permission
 from app_utils.logging import LoggerAddTag
 
 from . import __title__
-from .decorators import fetch_token_for_owner
 from .managers import BlueprintManager, LocationManager, OwnerManager, RequestManager
 from .providers import esi
 from .validators import validate_material_efficiency, validate_time_efficiency
@@ -88,6 +87,7 @@ class Owner(models.Model):
 
     @property
     def name(self) -> str:
+        """Return the name of this owner."""
         try:
             if self.corporation:
                 return self.corporation.corporation_name
@@ -97,30 +97,33 @@ class Owner(models.Model):
 
     @property
     def corporation_strict(self) -> EveCorporationInfo:
+        """Return corporation of this owner when it exists, or raises error."""
         if not self.corporation:
             raise ValueError("No corporation defined")
         return self.corporation
 
     @property
     def eve_character_strict(self) -> EveCharacter:
+        """Return character of this owner when it exists, or raises error."""
         if not self.character or not self.character.character:
             raise ValueError("No character defined")
         return self.character.character
 
     def update_locations_esi(self):
+        """Update locations from ESI."""
         if self.corporation:
-            assets = self._fetch_corporate_assets()
             token = self.valid_token(
                 [
                     "esi-universe.read_structures.v1",
                     "esi-assets.read_corporation_assets.v1",
                 ]
             )
+            assets = self._fetch_corporate_assets(token)
         else:
-            assets = self._fetch_personal_assets()
             token = self.valid_token(
                 ["esi-universe.read_structures.v1", "esi-assets.read_assets.v1"]
             )
+            assets = self._fetch_personal_assets(token)
 
         asset_ids = []
         asset_locations = {}
@@ -137,7 +140,7 @@ class Owner(models.Model):
                 else:
                     asset_locations[location_id] = [asset["item_id"]]
 
-        for location_id in asset_locations.keys():
+        for location_id in asset_locations:
             asset = assets_by_id[location_id]
             parent_location = asset["location_id"]
             parent = get_or_create_location_async(parent_location, token=token)
@@ -153,21 +156,21 @@ class Owner(models.Model):
             self.blueprints.values_list("item_id", flat=True)
         )
         if self.corporation:
-            blueprints = self._fetch_corporate_blueprints()
             token = self.valid_token(
                 [
                     "esi-universe.read_structures.v1",
                     "esi-corporations.read_blueprints.v1",
                 ]
             )
+            blueprints = self._fetch_corporate_blueprints(token)
         else:
-            blueprints = self._fetch_personal_blueprints()
             token = self.valid_token(
                 [
                     "esi-universe.read_structures.v1",
                     "esi-characters.read_blueprints.v1",
                 ]
             )
+            blueprints = self._fetch_personal_blueprints(token)
 
         for blueprint in blueprints:
             runs = blueprint["runs"]
@@ -213,110 +216,105 @@ class Owner(models.Model):
         Blueprint.objects.filter(pk__in=blueprint_ids_to_remove).delete()
 
     def update_industry_jobs_esi(self):
-        """updates all blueprints from ESI"""
+        """Update all blueprints from ESI."""
 
-        if self.is_active:
-            job_ids_to_remove = list(
-                IndustryJob.objects.filter(owner=self).values_list("id", flat=True)
+        if not self.is_active:
+            return
+
+        job_ids_to_remove = list(
+            IndustryJob.objects.filter(owner=self).values_list("id", flat=True)
+        )
+        if self.corporation:
+            token = self.valid_token(
+                [
+                    "esi-universe.read_structures.v1",
+                    "esi-industry.read_corporation_jobs.v1",
+                ]
             )
-            if self.corporation:
-                jobs = self._fetch_corporate_industry_jobs()
-                token = self.valid_token(
-                    [
-                        "esi-universe.read_structures.v1",
-                        "esi-industry.read_corporation_jobs.v1",
-                    ]
-                )
-            else:
-                jobs = self._fetch_personal_industry_jobs()
-                token = self.valid_token(
-                    [
-                        "esi-universe.read_structures.v1",
-                        "esi-industry.read_character_jobs.v1",
-                    ]
-                )
+            jobs = self._fetch_corporate_industry_jobs(token)
+        else:
+            token = self.valid_token(
+                [
+                    "esi-universe.read_structures.v1",
+                    "esi-industry.read_character_jobs.v1",
+                ]
+            )
+            jobs = self._fetch_personal_industry_jobs(token)
 
-            for job in jobs:
-                original = IndustryJob.objects.filter(
-                    owner=self, id=job["job_id"]
-                ).first()
-                blueprint = Blueprint.objects.filter(pk=job["blueprint_id"]).first()
-                if blueprint is not None:
-                    if original is not None:
-                        # We've seen this job coming from ESI, so we know it shouldn't be deleted
-                        job_ids_to_remove.remove(original.id)
-                        original.status = job["status"]
-                        original.save()
-                    else:
-                        # Reject personal listings of corporate jobs and visa-versa
-                        if blueprint.owner == self:
-                            installer = EveCharacter.objects.get_character_by_id(
+        for job in jobs:
+            original = IndustryJob.objects.filter(owner=self, id=job["job_id"]).first()
+            blueprint = Blueprint.objects.filter(pk=job["blueprint_id"]).first()
+            if blueprint is not None:
+                if original is not None:
+                    # We've seen this job coming from ESI, so we know it shouldn't be deleted
+                    job_ids_to_remove.remove(original.id)
+                    original.status = job["status"]
+                    original.save()
+                else:
+                    # Reject personal listings of corporate jobs and visa-versa
+                    if blueprint.owner == self:
+                        installer = EveCharacter.objects.get_character_by_id(
+                            job["installer_id"]
+                        )
+                        if not installer:
+                            installer = EveCharacter.objects.create_character(
                                 job["installer_id"]
                             )
-                            if not installer:
-                                installer = EveCharacter.objects.create_character(
-                                    job["installer_id"]
-                                )
-                            IndustryJob.objects.create(
-                                id=job["job_id"],
-                                activity=job["activity_id"],
-                                owner=self,
-                                location=get_or_create_location_async(
-                                    job["output_location_id"],
-                                    token=token,
-                                ),
-                                blueprint=Blueprint.objects.get(pk=job["blueprint_id"]),
-                                installer=installer,
-                                runs=job["runs"],
-                                start_date=job["start_date"],
-                                end_date=job["end_date"],
-                                status=job["status"],
-                            )
-                else:
-                    blueprint_id = job["blueprint_id"]
-                    logger.warning(f"Unmatchable blueprint ID: {blueprint_id}")
-            IndustryJob.objects.filter(pk__in=job_ids_to_remove).delete()
+                        IndustryJob.objects.create(
+                            id=job["job_id"],
+                            activity=job["activity_id"],
+                            owner=self,
+                            location=get_or_create_location_async(
+                                job["output_location_id"],
+                                token=token,
+                            ),
+                            blueprint=Blueprint.objects.get(pk=job["blueprint_id"]),
+                            installer=installer,
+                            runs=job["runs"],
+                            start_date=job["start_date"],
+                            end_date=job["end_date"],
+                            status=job["status"],
+                        )
+            else:
+                blueprint_id = job["blueprint_id"]
+                logger.warning(f"Unmatchable blueprint ID: {blueprint_id}")
 
-    @fetch_token_for_owner(["esi-assets.read_corporation_assets.v1"])
+        IndustryJob.objects.filter(pk__in=job_ids_to_remove).delete()
+
     def _fetch_corporate_assets(self, token) -> list:
         return esi.client.Assets.get_corporations_corporation_id_assets(
             corporation_id=self.corporation_strict.corporation_id,
             token=token.valid_access_token(),
         ).results()
 
-    @fetch_token_for_owner(["esi-assets.read_assets.v1"])
     def _fetch_personal_assets(self, token) -> list:
         return esi.client.Assets.get_characters_character_id_assets(
             character_id=self.eve_character_strict.character_id,
             token=token.valid_access_token(),
         ).results()
 
-    @fetch_token_for_owner(["esi-corporations.read_blueprints.v1"])
-    def _fetch_corporate_blueprints(self, token) -> list:
+    def _fetch_corporate_blueprints(self, token: Token) -> list:
         blueprints = esi.client.Corporation.get_corporations_corporation_id_blueprints(
             corporation_id=self.corporation_strict.corporation_id,
             token=token.valid_access_token(),
         ).results()
         return blueprints
 
-    @fetch_token_for_owner(["esi-characters.read_blueprints.v1"])
-    def _fetch_personal_blueprints(self, token) -> list:
+    def _fetch_personal_blueprints(self, token: Token) -> list:
         blueprints = esi.client.Character.get_characters_character_id_blueprints(
             character_id=self.eve_character_strict.character_id,
             token=token.valid_access_token(),
         ).results()
         return blueprints
 
-    @fetch_token_for_owner(["esi-industry.read_corporation_jobs.v1"])
-    def _fetch_corporate_industry_jobs(self, token) -> list:
+    def _fetch_corporate_industry_jobs(self, token: Token) -> list:
         jobs = esi.client.Industry.get_corporations_corporation_id_industry_jobs(
             corporation_id=self.corporation_strict.corporation_id,
             token=token.valid_access_token(),
         ).results()
         return jobs
 
-    @fetch_token_for_owner(["esi-industry.read_character_jobs.v1"])
-    def _fetch_personal_industry_jobs(self, token) -> list:
+    def _fetch_personal_industry_jobs(self, token: Token) -> list:
         jobs = esi.client.Industry.get_characters_character_id_industry_jobs(
             character_id=self.eve_character_strict.character_id,
             token=token.valid_access_token(),
@@ -341,7 +339,11 @@ class Owner(models.Model):
 
 
 class Blueprint(models.Model):
+    """A blueprint in Eve Online."""
+
     class LocationFlag(models.TextChoices):
+        """A flag denoting the location of a blueprint."""
+
         ASSET_SAFETY = "AssetSafety", _("Asset Safety")
         AUTO_FIT = "AutoFit", _("Auto Fit")
         BONUS = "Bonus", _("Bonus")
@@ -486,6 +488,7 @@ class Blueprint(models.Model):
 
         @classmethod
         def from_esi_data(cls, data: str) -> "Blueprint.LocationFlag":
+            """Create new obj from ESI data."""
             try:
                 return cls(data)
             except ValueError:
@@ -533,10 +536,12 @@ class Blueprint(models.Model):
 
     @property
     def is_original(self):
+        """Return True, when this is a BPO, else False"""
         return not self.runs
 
     @property
     def location_flag_obj(self) -> "Blueprint.LocationFlag":
+        """Return the location flag object of this blueprint."""
         return self.LocationFlag(self.location_flag)
 
     class Meta:
@@ -548,16 +553,24 @@ class Blueprint(models.Model):
         )
 
     def has_industryjob(self):
-        return hasattr(self, "industryjob") and self.industryjob is not None
+        """Return True if this blueprint has an industry job, else False."""
+        try:
+            return self.industryjob is not None  # pylint: disable = no-member
+        except ObjectDoesNotExist:
+            return False
 
 
 class IndustryJob(models.Model):
+    """An industry job in Eve Online."""
+
     id = models.PositiveBigIntegerField(
         primary_key=True,
         help_text=("Eve Online job ID"),
     )
 
     class Activity(models.IntegerChoices):
+        """The type of activity an industry job is performing."""
+
         MANUFACTURING = 1, _("Manufacturing")
         RESEARCHING_TECHNOLOGY = 2, _("Researching Technology")
         RESEARCHING_TIME_EFFICIENCY = 3, _("Researching Time Efficiency")
@@ -681,11 +694,12 @@ class Location(models.Model):
 
     @property
     def is_empty(self) -> bool:
+        """Return True if this is an empty location, else False."""
         return not self.eve_solar_system and not self.eve_type and not self.parent_id
 
     @property
     def solar_system_url(self) -> str:
-        """returns dotlan URL for this solar system"""
+        """Return dotlan URL for this solar system."""
         try:
             return dotlan.solar_system_url(self.eve_solar_system.name)
         except AttributeError:
@@ -693,18 +707,22 @@ class Location(models.Model):
 
     @property
     def is_solar_system(self) -> bool:
+        """Return True if this location is a solar system, else False."""
         return self.is_solar_system_id(self.id)
 
     @property
     def is_station(self) -> bool:
+        """Return True if this location is a station, else False."""
         return self.is_station_id(self.id)
 
     @classmethod
     def is_solar_system_id(cls, location_id: int) -> bool:
+        """Return True if the given ID is a solar system ID, else False."""
         return cls._SOLAR_SYSTEM_ID_START <= location_id <= cls._SOLAR_SYSTEM_ID_END
 
     @classmethod
     def is_station_id(cls, location_id: int) -> bool:
+        """Return True if the given ID is a station ID, else False."""
         return cls._STATION_ID_START <= location_id <= cls._STATION_ID_END
 
     def full_qualified_name(self) -> str:
@@ -715,6 +733,8 @@ class Location(models.Model):
 
 
 class Request(models.Model):
+    """A request to use a specific blueprint."""
+
     blueprint = models.ForeignKey(
         Blueprint,
         on_delete=models.CASCADE,
@@ -764,16 +784,70 @@ class Request(models.Model):
         default_permissions = ()
 
     def __str__(self) -> str:
-        return f"{self.requesting_user.profile.main_character.character_name}'s request for {self.blueprint.eve_type.name}"
+        character_name = self.requesting_character_name()
+        type_name = self.blueprint.eve_type.name
+        return f"{character_name}'s request for {type_name}"
 
     def __repr__(self) -> str:
+        character_name = self.requesting_character_name()
         return (
             f"{self.__class__.__name__}(id={self.pk}, "
-            f"requesting_user='{self.requesting_user.profile.main_character.character_name}', "
-            f"type_name='{self.eve_type.name}')"
+            f"requesting_user='{character_name}', "
+            f"type_name='{self.blueprint.eve_type.name}')"
         )
 
+    def requesting_character_name(self) -> str:
+        """Return main character's name of the requesting user safely."""
+        try:
+            return self.requesting_user.profile.main_character.character_name
+        except AttributeError:
+            return "?"
+
+    def mark_request(
+        self, user: User, status: str, closed: bool, can_requestor_edit: bool = False
+    ) -> bool:
+        """Change the status of a blueprint request."""
+        character_ownerships = user.character_ownerships.select_related(
+            "character"
+        ).all()
+        corporation_ids = {
+            character.character.corporation_id for character in character_ownerships
+        }
+        character_ownership_ids = {character.pk for character in character_ownerships}
+        has_requestor_character_in_owner_corporation = (
+            self.blueprint.owner.corporation
+            and self.blueprint.owner.corporation.corporation_id in corporation_ids
+        )
+        is_requestor_owner_of_blueprint = (
+            not self.blueprint.owner.corporation
+            and self.blueprint.owner.character
+            and self.blueprint.owner.character.pk in character_ownership_ids
+        )
+
+        if (
+            has_requestor_character_in_owner_corporation
+            or is_requestor_owner_of_blueprint
+            or (can_requestor_edit and self.requesting_user == user)
+        ):
+            if closed:
+                self.closed_at = now()
+            else:
+                self.closed_at = None
+
+            if status in {Request.STATUS_FULFILLED, Request.STATUS_IN_PROGRESS}:
+                fulfulling_user = user
+            else:
+                fulfulling_user = None
+
+            self.fulfulling_user = fulfulling_user
+            self.status = status
+            self.save()
+            return True
+
+        return False
+
     def notify_new_request(self) -> None:
+        """Notify approvers that a blueprint request has been created."""
         for approver in self.approvers():
             notify(
                 title=(
@@ -788,6 +862,7 @@ class Request(models.Model):
             )
 
     def notify_request_in_progress(self) -> None:
+        """Notify requestor and approvers that a blueprint request is in progress."""
         notify(
             title=(f"Blueprints: {self.blueprint.eve_type.name} request in progress"),
             message=(
@@ -813,6 +888,7 @@ class Request(models.Model):
             )
 
     def notify_request_reopened(self, reopened_by: User) -> None:
+        """Notify approvers that a blueprint request was reopened."""
         for user in set(self.approvers()) - {reopened_by} | {self.requesting_user}:
             notify(
                 title=(f"Blueprints: {self.blueprint.eve_type.name} request re-opened"),
@@ -826,6 +902,7 @@ class Request(models.Model):
             )
 
     def notify_request_fulfilled(self) -> None:
+        """Notify requestor that his blueprint request was fulfilled."""
         notify(
             title=(f"Blueprints: {self.blueprint.eve_type.name} request completed"),
             message=(
@@ -837,6 +914,7 @@ class Request(models.Model):
         )
 
     def notify_request_canceled_by_requestor(self) -> None:
+        """Notify approvers that a blueprint request was canceled by a requestor."""
         for approver in set(self.approvers()):
             notify(
                 title=(f"Blueprints: {self.blueprint.eve_type.name} request canceled"),
@@ -849,6 +927,7 @@ class Request(models.Model):
             )
 
     def notify_request_canceled_by_approver(self, canceled_by: User) -> None:
+        """Notify approvers that a blueprint request was canceled by an approver."""
         for approver in set(self.approvers()) - {canceled_by} | {self.requesting_user}:
             notify(
                 title=(f"Blueprints: {self.blueprint.eve_type.name} request canceled"),
@@ -862,7 +941,8 @@ class Request(models.Model):
             )
 
     @classmethod
-    def approvers(cls) -> List[User]:
+    def approvers(cls) -> models.QuerySet[User]:
+        """Return queryset of all approvers."""
         permission = Permission.objects.select_related("content_type").get(
             content_type__app_label=cls._meta.app_label, codename="manage_requests"
         )
