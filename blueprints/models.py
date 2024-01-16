@@ -215,67 +215,68 @@ class Owner(models.Model):
     def update_industry_jobs_esi(self):
         """updates all blueprints from ESI"""
 
-        if self.is_active:
-            job_ids_to_remove = list(
-                IndustryJob.objects.filter(owner=self).values_list("id", flat=True)
-            )
-            if self.corporation:
-                jobs = self._fetch_corporate_industry_jobs()
-                token = self.valid_token(
-                    [
-                        "esi-universe.read_structures.v1",
-                        "esi-industry.read_corporation_jobs.v1",
-                    ]
-                )
-            else:
-                jobs = self._fetch_personal_industry_jobs()
-                token = self.valid_token(
-                    [
-                        "esi-universe.read_structures.v1",
-                        "esi-industry.read_character_jobs.v1",
-                    ]
-                )
+        if not self.is_active:
+            return
 
-            for job in jobs:
-                original = IndustryJob.objects.filter(
-                    owner=self, id=job["job_id"]
-                ).first()
-                blueprint = Blueprint.objects.filter(pk=job["blueprint_id"]).first()
-                if blueprint is not None:
-                    if original is not None:
-                        # We've seen this job coming from ESI, so we know it shouldn't be deleted
-                        job_ids_to_remove.remove(original.id)
-                        original.status = job["status"]
-                        original.save()
-                    else:
-                        # Reject personal listings of corporate jobs and visa-versa
-                        if blueprint.owner == self:
-                            installer = EveCharacter.objects.get_character_by_id(
+        job_ids_to_remove = list(
+            IndustryJob.objects.filter(owner=self).values_list("id", flat=True)
+        )
+        if self.corporation:
+            jobs = self._fetch_corporate_industry_jobs()
+            token = self.valid_token(
+                [
+                    "esi-universe.read_structures.v1",
+                    "esi-industry.read_corporation_jobs.v1",
+                ]
+            )
+        else:
+            jobs = self._fetch_personal_industry_jobs()
+            token = self.valid_token(
+                [
+                    "esi-universe.read_structures.v1",
+                    "esi-industry.read_character_jobs.v1",
+                ]
+            )
+
+        for job in jobs:
+            original = IndustryJob.objects.filter(owner=self, id=job["job_id"]).first()
+            blueprint = Blueprint.objects.filter(pk=job["blueprint_id"]).first()
+            if blueprint is not None:
+                if original is not None:
+                    # We've seen this job coming from ESI, so we know it shouldn't be deleted
+                    job_ids_to_remove.remove(original.id)
+                    original.status = job["status"]
+                    original.save()
+                else:
+                    # Reject personal listings of corporate jobs and visa-versa
+                    if blueprint.owner == self:
+                        installer = EveCharacter.objects.get_character_by_id(
+                            job["installer_id"]
+                        )
+                        if not installer:
+                            installer = EveCharacter.objects.create_character(
                                 job["installer_id"]
                             )
-                            if not installer:
-                                installer = EveCharacter.objects.create_character(
-                                    job["installer_id"]
-                                )
-                            IndustryJob.objects.create(
-                                id=job["job_id"],
-                                activity=job["activity_id"],
-                                owner=self,
-                                location=get_or_create_location_async(
-                                    job["output_location_id"],
-                                    token=token,
-                                ),
-                                blueprint=Blueprint.objects.get(pk=job["blueprint_id"]),
-                                installer=installer,
-                                runs=job["runs"],
-                                start_date=job["start_date"],
-                                end_date=job["end_date"],
-                                status=job["status"],
-                            )
-                else:
-                    blueprint_id = job["blueprint_id"]
-                    logger.warning(f"Unmatchable blueprint ID: {blueprint_id}")
-            IndustryJob.objects.filter(pk__in=job_ids_to_remove).delete()
+                        IndustryJob.objects.create(
+                            id=job["job_id"],
+                            activity=job["activity_id"],
+                            owner=self,
+                            location=get_or_create_location_async(
+                                job["output_location_id"],
+                                token=token,
+                            ),
+                            blueprint=Blueprint.objects.get(pk=job["blueprint_id"]),
+                            installer=installer,
+                            runs=job["runs"],
+                            start_date=job["start_date"],
+                            end_date=job["end_date"],
+                            status=job["status"],
+                        )
+            else:
+                blueprint_id = job["blueprint_id"]
+                logger.warning(f"Unmatchable blueprint ID: {blueprint_id}")
+
+        IndustryJob.objects.filter(pk__in=job_ids_to_remove).delete()
 
     @fetch_token_for_owner(["esi-assets.read_corporation_assets.v1"])
     def _fetch_corporate_assets(self, token) -> list:
@@ -764,14 +765,24 @@ class Request(models.Model):
         default_permissions = ()
 
     def __str__(self) -> str:
-        return f"{self.requesting_user.profile.main_character.character_name}'s request for {self.blueprint.eve_type.name}"
+        character_name = self._requesting_character_name()
+        type_name = self.blueprint.eve_type.name
+        return f"{character_name}'s request for {type_name}"
 
     def __repr__(self) -> str:
+        character_name = self._requesting_character_name()
         return (
             f"{self.__class__.__name__}(id={self.pk}, "
-            f"requesting_user='{self.requesting_user.profile.main_character.character_name}', "
+            f"requesting_user='{character_name}', "
             f"type_name='{self.blueprint.eve_type.name}')"
         )
+
+    def _requesting_character_name(self) -> str:
+        """Return main character's name of the requesting user safely."""
+        try:
+            return self.requesting_user.profile.main_character.character_name
+        except AttributeError:
+            return "(no main)"
 
     def notify_new_request(self) -> None:
         for approver in self.approvers():
