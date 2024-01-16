@@ -7,7 +7,7 @@ and this project adheres to [PEP-440](https://www.python.org/dev/peps/pep-0440/)
 
 ## [Unreleased]
 
-## [1.7.0] - TBD
+## [1.7.0] - 2024-01-16
 
 ### Changed
 
