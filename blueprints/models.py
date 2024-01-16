@@ -3,6 +3,7 @@
 from django.contrib.auth.models import Permission, User
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
+from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from esi.errors import TokenError
 from esi.models import Token
@@ -801,6 +802,49 @@ class Request(models.Model):
             return self.requesting_user.profile.main_character.character_name
         except AttributeError:
             return "?"
+
+    def mark_request(
+        self, user: User, status: str, closed: bool, can_requestor_edit: bool = False
+    ) -> bool:
+        """Change the status of a blueprint request."""
+        character_ownerships = user.character_ownerships.select_related(
+            "character"
+        ).all()
+        corporation_ids = {
+            character.character.corporation_id for character in character_ownerships
+        }
+        character_ownership_ids = {character.pk for character in character_ownerships}
+        has_requestor_character_in_owner_corporation = (
+            self.blueprint.owner.corporation
+            and self.blueprint.owner.corporation.corporation_id in corporation_ids
+        )
+        is_requestor_owner_of_blueprint = (
+            not self.blueprint.owner.corporation
+            and self.blueprint.owner.character
+            and self.blueprint.owner.character.pk in character_ownership_ids
+        )
+
+        if (
+            has_requestor_character_in_owner_corporation
+            or is_requestor_owner_of_blueprint
+            or (can_requestor_edit and self.requesting_user == user)
+        ):
+            if closed:
+                self.closed_at = now()
+            else:
+                self.closed_at = None
+
+            if status in {Request.STATUS_FULFILLED, Request.STATUS_IN_PROGRESS}:
+                fulfulling_user = user
+            else:
+                fulfulling_user = None
+
+            self.fulfulling_user = fulfulling_user
+            self.status = status
+            self.save()
+            return True
+
+        return False
 
     def notify_new_request(self) -> None:
         """Notify approvers that a blueprint request has been created."""

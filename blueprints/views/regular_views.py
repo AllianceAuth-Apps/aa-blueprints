@@ -1,6 +1,5 @@
 """Regular views for Blueprints."""
 
-from typing import Optional, Tuple
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -10,7 +9,6 @@ from django.db.models import QuerySet
 from django.http import HttpRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.html import format_html
-from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_POST
 from esi.decorators import token_required
@@ -202,8 +200,8 @@ def add_personal_blueprint_owner(request: HttpRequest, token: Token):
     return redirect("blueprints:index")
 
 
-def convert_blueprint_for_template(
-    blueprint: Blueprint, user: User, details=False
+def _convert_blueprint_for_template(
+    blueprint: Blueprint, user: User, include_details: bool = False
 ) -> dict:
     """Convert a blueprint for use in a template."""
     variant = EveType.IconVariant.BPC if blueprint.runs else EveType.IconVariant.BPO
@@ -244,7 +242,7 @@ def convert_blueprint_for_template(
         "ot": owner_type,
         "use": blueprint.has_industryjob(),
     }
-    if details:
+    if include_details:
         if blueprint.has_industryjob() and user.has_perm(
             "blueprints.view_industry_jobs"
         ):
@@ -346,8 +344,8 @@ def view_blueprint_modal(request: HttpRequest):
     """Render modal view for a blueprint."""
     blueprint = get_object_or_404(Blueprint, pk=request.GET.get("blueprint_id"))
     context = {
-        "blueprint": convert_blueprint_for_template(
-            blueprint, request.user, details=True
+        "blueprint": _convert_blueprint_for_template(
+            blueprint, request.user, include_details=True
         )
     }
     return render(request, "blueprints/modals/view_blueprint_content.html", context)
@@ -358,7 +356,7 @@ def view_blueprint_modal(request: HttpRequest):
 def view_request_modal(request: HttpRequest):
     """Render modal view for a blueprint request."""
     user_request = get_object_or_404(Request, pk=request.GET.get("request_id"))
-    context = {"request": convert_request_for_template(user_request, request.user)}
+    context = {"request": _convert_request_for_template(user_request, request.user)}
     return render(request, "blueprints/modals/view_request_content.html", context)
 
 
@@ -389,7 +387,7 @@ def create_request(request: HttpRequest):
     return redirect("blueprints:index")
 
 
-def convert_request_for_template(request: Request, user) -> dict:
+def _convert_request_for_template(request: Request, user: User) -> dict:
     """Convert a blueprint request for a template."""
     variant = (
         EveType.IconVariant.BPC if request.blueprint.runs else EveType.IconVariant.BPO
@@ -436,7 +434,7 @@ def list_user_requests(request: HttpRequest):
         requesting_user=request.user, closed_at=None
     )
     request_rows = [
-        convert_request_for_template(req, request.user) for req in request_query
+        _convert_request_for_template(req, request.user) for req in request_query
     ]
 
     return JsonResponse(request_rows, safe=False)
@@ -452,53 +450,11 @@ def list_open_requests(request: HttpRequest):
     ) | Request.objects.select_related_default().requests_being_fulfilled_by_user(
         request.user
     )
-    request_rows = [convert_request_for_template(req, request.user) for req in requests]
+    request_rows = [
+        _convert_request_for_template(req, request.user) for req in requests
+    ]
 
     return JsonResponse(request_rows, safe=False)
-
-
-def _mark_request(
-    user_request: Request,
-    user: User,
-    status: str,
-    fulfulling_user: Optional[User],
-    closed: bool,
-    *,
-    can_requestor_edit: bool = False,
-) -> Tuple[Request, bool]:
-    """Change the status of a blueprint request."""
-    completed = False
-    character_ownerships = user.character_ownerships.select_related("character").all()
-    corporation_ids = {
-        character.character.corporation_id for character in character_ownerships
-    }
-    character_ownership_ids = {character.pk for character in character_ownerships}
-    has_requestor_character_in_owner_corporation = (
-        user_request.blueprint.owner.corporation
-        and user_request.blueprint.owner.corporation.corporation_id in corporation_ids
-    )
-    is_requestor_owner_of_blueprint = (
-        not user_request.blueprint.owner.corporation
-        and user_request.blueprint.owner.character
-        and user_request.blueprint.owner.character.pk in character_ownership_ids
-    )
-
-    if (
-        has_requestor_character_in_owner_corporation
-        or is_requestor_owner_of_blueprint
-        or (can_requestor_edit and user_request.requesting_user == user)
-    ):
-        if closed:
-            user_request.closed_at = now()
-        else:
-            user_request.closed_at = None
-
-        user_request.fulfulling_user = fulfulling_user
-        user_request.status = status
-        user_request.save()
-        completed = True
-
-    return user_request, completed
 
 
 @login_required
@@ -507,12 +463,8 @@ def _mark_request(
 def mark_request_fulfilled(request: HttpRequest, request_id: int):
     """Render view to mark a blueprint request as fulfilled."""
     user_request = get_object_or_404(Request, pk=request_id)
-    is_completed = _mark_request(
-        user_request=user_request,
-        user=request.user,
-        status=Request.STATUS_FULFILLED,
-        fulfulling_user=request.user,
-        closed=True,
+    is_completed = user_request.mark_request(
+        user=request.user, status=Request.STATUS_FULFILLED, closed=True
     )
     if is_completed:
         user_request.notify_request_fulfilled()
@@ -540,12 +492,8 @@ def mark_request_fulfilled(request: HttpRequest, request_id: int):
 def mark_request_in_progress(request: HttpRequest, request_id: int):
     """Render view to mark a blueprint request as in progress."""
     user_request = get_object_or_404(Request, pk=request_id)
-    is_completed = _mark_request(
-        user_request=user_request,
-        user=request.user,
-        status=Request.STATUS_IN_PROGRESS,
-        fulfulling_user=request.user,
-        closed=False,
+    is_completed = user_request.mark_request(
+        user=request.user, status=Request.STATUS_IN_PROGRESS, closed=False
     )
     if is_completed:
         user_request.notify_request_in_progress()
@@ -573,12 +521,8 @@ def mark_request_in_progress(request: HttpRequest, request_id: int):
 def mark_request_open(request: HttpRequest, request_id: int):
     """Render view to mark a blueprint request as open."""
     user_request = get_object_or_404(Request, pk=request_id)
-    is_completed = _mark_request(
-        user_request=user_request,
-        user=request.user,
-        status=Request.STATUS_OPEN,
-        fulfulling_user=None,
-        closed=False,
+    is_completed = user_request.mark_request(
+        user=request.user, status=Request.STATUS_OPEN, closed=False
     )
     if is_completed:
         user_request.notify_request_reopened(request.user)
@@ -606,11 +550,9 @@ def mark_request_open(request: HttpRequest, request_id: int):
 def mark_request_cancelled(request: HttpRequest, request_id: int):
     """Render view to mark a blueprint request a canceled."""
     user_request = get_object_or_404(Request, pk=request_id)
-    is_completed = _mark_request(
-        user_request=user_request,
+    is_completed = user_request.mark_request(
         user=request.user,
         status=Request.STATUS_CANCELLED,
-        fulfulling_user=None,
         closed=True,
         can_requestor_edit=True,
     )
