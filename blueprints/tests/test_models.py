@@ -24,136 +24,6 @@ MANAGERS_PATH = "blueprints.managers"
 MODELS_PATH = "blueprints.models"
 
 
-@patch(MODELS_PATH + ".esi")
-@patch(MANAGERS_PATH + ".esi")
-class TestCorporateOwner(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
-        load_entities()
-        load_eveuniverse()
-        load_locations()
-
-    def setUp(self) -> None:
-        self.owner = create_owner(character_id=1101, corporation_id=2101)
-
-    def test_should_return_corporation_name_for_owner(
-        self, mock_esi_managers, mock_esi_models
-    ):
-        # when
-        result = str(self.owner)
-        # then
-        self.assertEqual(result, "Lexcorp")
-
-    def test_should_return_corporation_name_for_owner_with_no_character(
-        self, mock_esi_managers, mock_esi_models
-    ):
-        # given
-        owner = Owner.objects.create(
-            corporation=EveCorporationInfo.objects.get(corporation_id=2001)
-        )
-        # when
-        result = str(owner)
-        # then
-        self.assertEqual(result, "Wayne Technologies")
-
-    def test_should_return_empty_string_for_empty_owner(
-        self, mock_esi_managers, mock_esi_models
-    ):
-        # given
-        owner = Owner.objects.create()
-        # when
-        result = str(owner)
-        # then
-        self.assertEqual(result, "")
-
-    def test_update_locations_esi(self, mock_esi_managers, mock_esi_models):
-        mock_esi_managers.client = esi_client_stub
-        mock_esi_models.client = esi_client_stub
-
-        self.owner.update_locations_esi()
-
-        self.assertEquals(
-            Location.objects.get(id=1100000000001).parent,
-            Location.objects.get(id=60003760),
-        )
-
-    def test_update_blueprints_esi(self, mock_esi_managers, mock_esi_models):
-        mock_esi_managers.client = esi_client_stub
-        mock_esi_models.client = esi_client_stub
-        self.owner.update_blueprints_esi()
-        self.assertEquals(Blueprint.objects.filter(eve_type_id=33519).count(), 1)
-
-    def test_should_update_industry_jobs_esi(self, mock_esi_managers, mock_esi_models):
-        # given
-
-        mock_esi_managers.client = esi_client_stub
-        mock_esi_models.client = esi_client_stub
-        self.owner.update_blueprints_esi()
-        # when
-        self.owner.update_industry_jobs_esi()
-        # then
-        self.assertEquals(self.owner.jobs.count(), 1)
-        obj = self.owner.jobs.first()
-        self.assertEqual(obj.id, 100000002)
-        self.assertEqual(obj.activity, 5)
-        self.assertEqual(obj.location_id, 1000000000001)
-        self.assertEqual(obj.installer, EveCharacter.objects.get(character_id=1001))
-        self.assertEqual(obj.runs, 1)
-        self.assertEqual(obj.start_date, parse_datetime("2020-12-21T23:37:14Z"))
-        self.assertEqual(obj.status, "active")
-
-
-@patch(MODELS_PATH + ".esi")
-@patch(MANAGERS_PATH + ".esi")
-class TestPersonalOwner(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
-        load_entities()
-        load_eveuniverse()
-        load_locations()
-
-    def setUp(self) -> None:
-        self.owner = create_owner(character_id=1101, corporation_id=None)
-
-    def test_update_locations_esi(self, mock_esi_managers, mock_esi_models):
-        mock_esi_managers.client = esi_client_stub
-        mock_esi_models.client = esi_client_stub
-
-        self.owner.update_locations_esi()
-
-        self.assertEquals(
-            Location.objects.get(id=1100000000001).parent,
-            Location.objects.get(id=60003760),
-        )
-
-    def test_update_blueprints_esi(self, mock_esi_managers, mock_esi_models):
-        mock_esi_managers.client = esi_client_stub
-        mock_esi_models.client = esi_client_stub
-        self.owner.update_blueprints_esi()
-        self.assertEquals(Blueprint.objects.filter(eve_type_id=33519).count(), 1)
-
-    def test_should_update_industry_jobs_esi(self, mock_esi_managers, mock_esi_models):
-        # given
-
-        mock_esi_managers.client = esi_client_stub
-        mock_esi_models.client = esi_client_stub
-        self.owner.update_blueprints_esi()
-        # when
-        self.owner.update_industry_jobs_esi()
-        # then
-        self.assertEquals(self.owner.jobs.count(), 1)
-        obj = self.owner.jobs.first()
-        self.assertEqual(obj.id, 100000001)
-        self.assertEqual(obj.activity, 5)
-        self.assertEqual(obj.location_id, 1000000000001)
-        self.assertEqual(obj.installer, EveCharacter.objects.get(character_id=1001))
-        self.assertEqual(obj.runs, 1)
-        self.assertEqual(obj.start_date, parse_datetime("2020-12-21T23:37:14Z"))
-        self.assertEqual(obj.status, "active")
-
-
 class TestBlueprintsBase(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -303,7 +173,295 @@ class TestBlueprintManagerUserHasAccess(TestBlueprintsBase):
         self.assertSetEqual(set(qs.values_list("item_id", flat=True)), {1, 2, 3, 5, 6})
 
 
-class TestRequestManager(TestBlueprintsBase):
+class TestBlueprintManagerAnnotateLocationName(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        load_eveuniverse()
+        cls.owner = OwnerFactory()
+
+    def test_should_return_name(self):
+        # given
+        location = LocationStationFactory(name="Alpha")
+        BlueprintFactory(owner=self.owner, location=location)
+        # when
+        qs = Blueprint.objects.annotate_location_name()
+        # then
+        obj = qs.first()
+        self.assertEqual(obj.location_name, "Alpha")
+
+    def test_should_return_parent_name(self):
+        # given
+        parent_location = LocationStationFactory(name="Parent")
+        child_location = LocationStationFactory(name="", parent=parent_location)
+        BlueprintFactory(owner=self.owner, location=child_location)
+        # when
+        qs = Blueprint.objects.annotate_location_name()
+        # then
+        obj = qs.first()
+        self.assertEqual(obj.location_name, "Parent")
+
+    def test_should_return_generic_name(self):
+        # given
+        location = LocationStationFactory(name="")
+        BlueprintFactory(owner=self.owner, location=location)
+        # when
+        qs = Blueprint.objects.annotate_location_name()
+        # then
+        obj = qs.first()
+        self.assertEqual(obj.location_name, f"Location #{location.id}")
+
+    def test_should_return_parent_parent_name(self):
+        # given
+        parent_location = LocationStationFactory(name="Parent")
+        child_location = LocationStationFactory(name="", parent=parent_location)
+        child_child_location = LocationStationFactory(name="", parent=child_location)
+        BlueprintFactory(owner=self.owner, location=child_child_location)
+        # when
+        qs = Blueprint.objects.annotate_location_name()
+        # then
+        obj = qs.first()
+        self.assertEqual(obj.location_name, "Parent")
+
+    def test_should_return_parent_parent_parent_name(self):
+        # given
+        parent_location = LocationStationFactory(name="Parent")
+        child_location = LocationStationFactory(name="", parent=parent_location)
+        child_child_location = LocationStationFactory(name="", parent=child_location)
+        child_child_child_location = LocationStationFactory(
+            name="", parent=child_child_location
+        )
+        BlueprintFactory(owner=self.owner, location=child_child_child_location)
+        # when
+        qs = Blueprint.objects.annotate_location_name()
+        # then
+        obj = qs.first()
+        self.assertEqual(obj.location_name, "Parent")
+
+    def test_should_return_first_parent_with_name_with_4_nodes(self):
+        # given
+        parent_location = LocationStationFactory(name="Parent")
+        child_location = LocationStationFactory(name="Child", parent=parent_location)
+        child_child_location = LocationStationFactory(name="", parent=child_location)
+        child_child_child_location = LocationStationFactory(
+            name="", parent=child_child_location
+        )
+        BlueprintFactory(owner=self.owner, location=child_child_child_location)
+        # when
+        qs = Blueprint.objects.annotate_location_name()
+        # then
+        obj = qs.first()
+        self.assertEqual(obj.location_name, "Child")
+
+    def test_should_return_first_parent_with_name_with_3_nodes(self):
+        # given
+        parent_location = LocationStationFactory(name="Parent")
+        child_location = LocationStationFactory(name="Child", parent=parent_location)
+        child_child_location = LocationStationFactory(name="", parent=child_location)
+        BlueprintFactory(owner=self.owner, location=child_child_location)
+        # when
+        qs = Blueprint.objects.annotate_location_name()
+        # then
+        obj = qs.first()
+        self.assertEqual(obj.location_name, "Child")
+
+
+@patch(MODELS_PATH + ".esi")
+@patch(MANAGERS_PATH + ".esi")
+class TestCorporateOwner(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_entities()
+        load_eveuniverse()
+        load_locations()
+
+    def setUp(self) -> None:
+        self.owner = create_owner(character_id=1101, corporation_id=2101)
+
+    def test_should_return_corporation_name_for_owner(
+        self, mock_esi_managers, mock_esi_models
+    ):
+        # when
+        result = str(self.owner)
+        # then
+        self.assertEqual(result, "Lexcorp")
+
+    def test_should_return_corporation_name_for_owner_with_no_character(
+        self, mock_esi_managers, mock_esi_models
+    ):
+        # given
+        owner = Owner.objects.create(
+            corporation=EveCorporationInfo.objects.get(corporation_id=2001)
+        )
+        # when
+        result = str(owner)
+        # then
+        self.assertEqual(result, "Wayne Technologies")
+
+    def test_should_return_empty_string_for_empty_owner(
+        self, mock_esi_managers, mock_esi_models
+    ):
+        # given
+        owner = Owner.objects.create()
+        # when
+        result = str(owner)
+        # then
+        self.assertEqual(result, "")
+
+    def test_update_locations_esi(self, mock_esi_managers, mock_esi_models):
+        mock_esi_managers.client = esi_client_stub
+        mock_esi_models.client = esi_client_stub
+
+        self.owner.update_locations_esi()
+
+        self.assertEquals(
+            Location.objects.get(id=1100000000001).parent,
+            Location.objects.get(id=60003760),
+        )
+
+    def test_update_blueprints_esi(self, mock_esi_managers, mock_esi_models):
+        mock_esi_managers.client = esi_client_stub
+        mock_esi_models.client = esi_client_stub
+        self.owner.update_blueprints_esi()
+        self.assertEquals(Blueprint.objects.filter(eve_type_id=33519).count(), 1)
+
+    def test_should_update_industry_jobs_esi(self, mock_esi_managers, mock_esi_models):
+        # given
+
+        mock_esi_managers.client = esi_client_stub
+        mock_esi_models.client = esi_client_stub
+        self.owner.update_blueprints_esi()
+        # when
+        self.owner.update_industry_jobs_esi()
+        # then
+        self.assertEquals(self.owner.jobs.count(), 1)
+        obj = self.owner.jobs.first()
+        self.assertEqual(obj.id, 100000002)
+        self.assertEqual(obj.activity, 5)
+        self.assertEqual(obj.location_id, 1000000000001)
+        self.assertEqual(obj.installer, EveCharacter.objects.get(character_id=1001))
+        self.assertEqual(obj.runs, 1)
+        self.assertEqual(obj.start_date, parse_datetime("2020-12-21T23:37:14Z"))
+        self.assertEqual(obj.status, "active")
+
+
+class TestLocationNamePlus(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        load_eveuniverse()
+
+    def test_should_return_name(self):
+        # given
+        location = LocationStationFactory(name="Alpha")
+        # when/then
+        self.assertEqual(location.full_qualified_name(), "Alpha")
+
+    def test_should_return_parent_name(self):
+        # given
+        parent_location = LocationStationFactory(name="Parent")
+        location = LocationStationFactory(name="Child", parent=parent_location)
+        # when/then
+        self.assertEqual(location.full_qualified_name(), "Parent - Child")
+
+    def test_should_return_generic_name(self):
+        # given
+        location = LocationStationFactory(name="")
+        # when/then
+        self.assertEqual(location.full_qualified_name(), f"Location #{location.id}")
+
+    def test_should_return_parent_parent_parent_name(self):
+        # given
+        parent_location = LocationStationFactory(name="Parent")
+        child_location = LocationStationFactory(name="Child 1", parent=parent_location)
+        child_child_location = LocationStationFactory(
+            name="Child 2", parent=child_location
+        )
+        location = LocationStationFactory(name="Child 3", parent=child_child_location)
+        # when/then
+        self.assertEqual(
+            location.full_qualified_name(), "Parent - Child 1 - Child 2 - Child 3"
+        )
+
+
+class TestOwnerValidToken(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.owner = OwnerFactory()
+
+    def test_should_return_valid_token(self):
+        # when
+        result = self.owner.valid_token(["esi-characters.read_blueprints.v1"])
+        # then
+        self.assertIsInstance(result, Token)
+
+    def test_should_raise_error_when_no_token_with_requested_scope_found(self):
+        # when/then
+        with self.assertRaises(TokenError):
+            self.owner.valid_token(["unknown-scope"])
+
+    @patch(MODELS_PATH + ".Token.objects.filter")
+    def test_should_raise_error_when_token_has_issue(self, mock):
+        # given
+        mock.side_effect = TokenExpiredError
+        # when/then
+        with self.assertRaises(TokenExpiredError):
+            self.owner.valid_token(["esi-characters.read_blueprints.v1"])
+
+
+@patch(MODELS_PATH + ".esi")
+@patch(MANAGERS_PATH + ".esi")
+class TestPersonalOwner(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_entities()
+        load_eveuniverse()
+        load_locations()
+
+    def setUp(self) -> None:
+        self.owner = create_owner(character_id=1101, corporation_id=None)
+
+    def test_update_locations_esi(self, mock_esi_managers, mock_esi_models):
+        mock_esi_managers.client = esi_client_stub
+        mock_esi_models.client = esi_client_stub
+
+        self.owner.update_locations_esi()
+
+        self.assertEquals(
+            Location.objects.get(id=1100000000001).parent,
+            Location.objects.get(id=60003760),
+        )
+
+    def test_update_blueprints_esi(self, mock_esi_managers, mock_esi_models):
+        mock_esi_managers.client = esi_client_stub
+        mock_esi_models.client = esi_client_stub
+        self.owner.update_blueprints_esi()
+        self.assertEquals(Blueprint.objects.filter(eve_type_id=33519).count(), 1)
+
+    def test_should_update_industry_jobs_esi(self, mock_esi_managers, mock_esi_models):
+        # given
+
+        mock_esi_managers.client = esi_client_stub
+        mock_esi_models.client = esi_client_stub
+        self.owner.update_blueprints_esi()
+        # when
+        self.owner.update_industry_jobs_esi()
+        # then
+        self.assertEquals(self.owner.jobs.count(), 1)
+        obj = self.owner.jobs.first()
+        self.assertEqual(obj.id, 100000001)
+        self.assertEqual(obj.activity, 5)
+        self.assertEqual(obj.location_id, 1000000000001)
+        self.assertEqual(obj.installer, EveCharacter.objects.get(character_id=1001))
+        self.assertEqual(obj.runs, 1)
+        self.assertEqual(obj.start_date, parse_datetime("2020-12-21T23:37:14Z"))
+        self.assertEqual(obj.status, "active")
+
+
+class TestRequests(TestBlueprintsBase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -330,6 +488,17 @@ class TestRequestManager(TestBlueprintsBase):
             time_efficiency=30,
             item_id=3,
         )
+
+    def test_should_strings(self):
+        # given
+        req_1 = Request.objects.create(
+            blueprint=self.bp_1,
+            requesting_user=self.user_1002,
+            status=Request.STATUS_OPEN,
+        )
+        # when/then
+        self.assertTrue(str(req_1))
+        self.assertTrue(repr(req_1))
 
     def test_should_return_fulfillable_requests(self):
         # given
@@ -430,161 +599,3 @@ class TestRequestManager(TestBlueprintsBase):
         result = Request.objects.open_requests_total_count(self.user_1001)
         # then
         self.assertEqual(result, 2)
-
-
-class TestBlueprintManagerAnnotateLocationName(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_eveuniverse()
-        cls.owner = OwnerFactory()
-
-    def test_should_return_name(self):
-        # given
-        location = LocationStationFactory(name="Alpha")
-        BlueprintFactory(owner=self.owner, location=location)
-        # when
-        qs = Blueprint.objects.annotate_location_name()
-        # then
-        obj = qs.first()
-        self.assertEqual(obj.location_name, "Alpha")
-
-    def test_should_return_parent_name(self):
-        # given
-        parent_location = LocationStationFactory(name="Parent")
-        child_location = LocationStationFactory(name="", parent=parent_location)
-        BlueprintFactory(owner=self.owner, location=child_location)
-        # when
-        qs = Blueprint.objects.annotate_location_name()
-        # then
-        obj = qs.first()
-        self.assertEqual(obj.location_name, "Parent")
-
-    def test_should_return_generic_name(self):
-        # given
-        location = LocationStationFactory(name="")
-        BlueprintFactory(owner=self.owner, location=location)
-        # when
-        qs = Blueprint.objects.annotate_location_name()
-        # then
-        obj = qs.first()
-        self.assertEqual(obj.location_name, f"Location #{location.id}")
-
-    def test_should_return_parent_parent_name(self):
-        # given
-        parent_location = LocationStationFactory(name="Parent")
-        child_location = LocationStationFactory(name="", parent=parent_location)
-        child_child_location = LocationStationFactory(name="", parent=child_location)
-        BlueprintFactory(owner=self.owner, location=child_child_location)
-        # when
-        qs = Blueprint.objects.annotate_location_name()
-        # then
-        obj = qs.first()
-        self.assertEqual(obj.location_name, "Parent")
-
-    def test_should_return_parent_parent_parent_name(self):
-        # given
-        parent_location = LocationStationFactory(name="Parent")
-        child_location = LocationStationFactory(name="", parent=parent_location)
-        child_child_location = LocationStationFactory(name="", parent=child_location)
-        child_child_child_location = LocationStationFactory(
-            name="", parent=child_child_location
-        )
-        BlueprintFactory(owner=self.owner, location=child_child_child_location)
-        # when
-        qs = Blueprint.objects.annotate_location_name()
-        # then
-        obj = qs.first()
-        self.assertEqual(obj.location_name, "Parent")
-
-    def test_should_return_first_parent_with_name_with_4_nodes(self):
-        # given
-        parent_location = LocationStationFactory(name="Parent")
-        child_location = LocationStationFactory(name="Child", parent=parent_location)
-        child_child_location = LocationStationFactory(name="", parent=child_location)
-        child_child_child_location = LocationStationFactory(
-            name="", parent=child_child_location
-        )
-        BlueprintFactory(owner=self.owner, location=child_child_child_location)
-        # when
-        qs = Blueprint.objects.annotate_location_name()
-        # then
-        obj = qs.first()
-        self.assertEqual(obj.location_name, "Child")
-
-    def test_should_return_first_parent_with_name_with_3_nodes(self):
-        # given
-        parent_location = LocationStationFactory(name="Parent")
-        child_location = LocationStationFactory(name="Child", parent=parent_location)
-        child_child_location = LocationStationFactory(name="", parent=child_location)
-        BlueprintFactory(owner=self.owner, location=child_child_location)
-        # when
-        qs = Blueprint.objects.annotate_location_name()
-        # then
-        obj = qs.first()
-        self.assertEqual(obj.location_name, "Child")
-
-
-class TestLocationNamePlus(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_eveuniverse()
-
-    def test_should_return_name(self):
-        # given
-        location = LocationStationFactory(name="Alpha")
-        # when/then
-        self.assertEqual(location.full_qualified_name(), "Alpha")
-
-    def test_should_return_parent_name(self):
-        # given
-        parent_location = LocationStationFactory(name="Parent")
-        location = LocationStationFactory(name="Child", parent=parent_location)
-        # when/then
-        self.assertEqual(location.full_qualified_name(), "Parent - Child")
-
-    def test_should_return_generic_name(self):
-        # given
-        location = LocationStationFactory(name="")
-        # when/then
-        self.assertEqual(location.full_qualified_name(), f"Location #{location.id}")
-
-    def test_should_return_parent_parent_parent_name(self):
-        # given
-        parent_location = LocationStationFactory(name="Parent")
-        child_location = LocationStationFactory(name="Child 1", parent=parent_location)
-        child_child_location = LocationStationFactory(
-            name="Child 2", parent=child_location
-        )
-        location = LocationStationFactory(name="Child 3", parent=child_child_location)
-        # when/then
-        self.assertEqual(
-            location.full_qualified_name(), "Parent - Child 1 - Child 2 - Child 3"
-        )
-
-
-class TestOwnerValidToken(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.owner = OwnerFactory()
-
-    def test_should_return_valid_token(self):
-        # when
-        result = self.owner.valid_token(["esi-characters.read_blueprints.v1"])
-        # then
-        self.assertIsInstance(result, Token)
-
-    def test_should_raise_error_when_no_token_with_requested_scope_found(self):
-        # when/then
-        with self.assertRaises(TokenError):
-            self.owner.valid_token(["unknown-scope"])
-
-    @patch(MODELS_PATH + ".Token.objects.filter")
-    def test_should_raise_error_when_token_has_issue(self, mock):
-        # given
-        mock.side_effect = TokenExpiredError
-        # when/then
-        with self.assertRaises(TokenExpiredError):
-            self.owner.valid_token(["esi-characters.read_blueprints.v1"])

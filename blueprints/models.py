@@ -770,7 +770,7 @@ class Request(models.Model):
         return (
             f"{self.__class__.__name__}(id={self.pk}, "
             f"requesting_user='{self.requesting_user.profile.main_character.character_name}', "
-            f"type_name='{self.eve_type.name}')"
+            f"type_name='{self.blueprint.eve_type.name}')"
         )
 
     def notify_new_request(self) -> None:
