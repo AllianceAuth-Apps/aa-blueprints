@@ -357,6 +357,7 @@ class RequestQuerySet(models.QuerySet):
     def requests_fulfillable_by_user(
         self, user: User, character_ownerships=None
     ) -> models.QuerySet:
+        """Add filter to only include requests which can be fulfilled by the given user."""
         if not character_ownerships:
             character_ownerships = user.character_ownerships.select_related("character")
         corporation_ids = {
@@ -378,6 +379,7 @@ class RequestQuerySet(models.QuerySet):
     def requests_being_fulfilled_by_user(
         self, user: User, character_ownerships=None
     ) -> models.QuerySet:
+        """Add filter to only include requests being fulfilled by the given user."""
         if not character_ownerships:
             character_ownerships = user.character_ownerships.select_related("character")
         corporation_ids = {
@@ -400,6 +402,7 @@ class RequestQuerySet(models.QuerySet):
 
 class RequestManagerBase(models.Manager):
     def select_related_default(self) -> models.QuerySet:
+        """Add default select related to this query."""
         return self.select_related(
             "blueprint",
             "blueprint__owner",

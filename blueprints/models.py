@@ -1,7 +1,5 @@
 """Models for Blueprints."""
 
-from typing import List
-
 from django.contrib.auth.models import Permission, User
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
@@ -88,6 +86,7 @@ class Owner(models.Model):
 
     @property
     def name(self) -> str:
+        """Return the name of this owner."""
         try:
             if self.corporation:
                 return self.corporation.corporation_name
@@ -97,17 +96,20 @@ class Owner(models.Model):
 
     @property
     def corporation_strict(self) -> EveCorporationInfo:
+        """Return corporation of this owner when it exists, or raises error."""
         if not self.corporation:
             raise ValueError("No corporation defined")
         return self.corporation
 
     @property
     def eve_character_strict(self) -> EveCharacter:
+        """Return character of this owner when it exists, or raises error."""
         if not self.character or not self.character.character:
             raise ValueError("No character defined")
         return self.character.character
 
     def update_locations_esi(self):
+        """Update locations from ESI."""
         if self.corporation:
             token = self.valid_token(
                 [
@@ -213,7 +215,7 @@ class Owner(models.Model):
         Blueprint.objects.filter(pk__in=blueprint_ids_to_remove).delete()
 
     def update_industry_jobs_esi(self):
-        """updates all blueprints from ESI"""
+        """Update all blueprints from ESI."""
 
         if not self.is_active:
             return
@@ -485,6 +487,7 @@ class Blueprint(models.Model):
 
         @classmethod
         def from_esi_data(cls, data: str) -> "Blueprint.LocationFlag":
+            """Create new obj from ESI data."""
             try:
                 return cls(data)
             except ValueError:
@@ -532,10 +535,12 @@ class Blueprint(models.Model):
 
     @property
     def is_original(self):
+        """Return True, when this is a BPO, else False"""
         return not self.runs
 
     @property
     def location_flag_obj(self) -> "Blueprint.LocationFlag":
+        """Return the location flag object of this blueprint."""
         return self.LocationFlag(self.location_flag)
 
     class Meta:
@@ -547,6 +552,7 @@ class Blueprint(models.Model):
         )
 
     def has_industryjob(self):
+        """Return True if this blueprint has an industry job, else False."""
         try:
             return self.industryjob is not None  # pylint: disable = no-member
         except ObjectDoesNotExist:
@@ -687,11 +693,12 @@ class Location(models.Model):
 
     @property
     def is_empty(self) -> bool:
+        """Return True if this is an empty location, else False."""
         return not self.eve_solar_system and not self.eve_type and not self.parent_id
 
     @property
     def solar_system_url(self) -> str:
-        """returns dotlan URL for this solar system"""
+        """Return dotlan URL for this solar system."""
         try:
             return dotlan.solar_system_url(self.eve_solar_system.name)
         except AttributeError:
@@ -699,18 +706,22 @@ class Location(models.Model):
 
     @property
     def is_solar_system(self) -> bool:
+        """Return True if this location is a solar system, else False."""
         return self.is_solar_system_id(self.id)
 
     @property
     def is_station(self) -> bool:
+        """Return True if this location is a station, else False."""
         return self.is_station_id(self.id)
 
     @classmethod
     def is_solar_system_id(cls, location_id: int) -> bool:
+        """Return True if the given ID is a solar system ID, else False."""
         return cls._SOLAR_SYSTEM_ID_START <= location_id <= cls._SOLAR_SYSTEM_ID_END
 
     @classmethod
     def is_station_id(cls, location_id: int) -> bool:
+        """Return True if the given ID is a station ID, else False."""
         return cls._STATION_ID_START <= location_id <= cls._STATION_ID_END
 
     def full_qualified_name(self) -> str:
@@ -792,6 +803,7 @@ class Request(models.Model):
             return "?"
 
     def notify_new_request(self) -> None:
+        """Notify approvers that a blueprint request has been created."""
         for approver in self.approvers():
             notify(
                 title=(
@@ -806,6 +818,7 @@ class Request(models.Model):
             )
 
     def notify_request_in_progress(self) -> None:
+        """Notify requestor and approvers that a blueprint request is in progress."""
         notify(
             title=(f"Blueprints: {self.blueprint.eve_type.name} request in progress"),
             message=(
@@ -831,6 +844,7 @@ class Request(models.Model):
             )
 
     def notify_request_reopened(self, reopened_by: User) -> None:
+        """Notify approvers that a blueprint request was reopened."""
         for user in set(self.approvers()) - {reopened_by} | {self.requesting_user}:
             notify(
                 title=(f"Blueprints: {self.blueprint.eve_type.name} request re-opened"),
@@ -844,6 +858,7 @@ class Request(models.Model):
             )
 
     def notify_request_fulfilled(self) -> None:
+        """Notify requestor that his blueprint request was fulfilled."""
         notify(
             title=(f"Blueprints: {self.blueprint.eve_type.name} request completed"),
             message=(
@@ -855,6 +870,7 @@ class Request(models.Model):
         )
 
     def notify_request_canceled_by_requestor(self) -> None:
+        """Notify approvers that a blueprint request was canceled by a requestor."""
         for approver in set(self.approvers()):
             notify(
                 title=(f"Blueprints: {self.blueprint.eve_type.name} request canceled"),
@@ -867,6 +883,7 @@ class Request(models.Model):
             )
 
     def notify_request_canceled_by_approver(self, canceled_by: User) -> None:
+        """Notify approvers that a blueprint request was canceled by an approver."""
         for approver in set(self.approvers()) - {canceled_by} | {self.requesting_user}:
             notify(
                 title=(f"Blueprints: {self.blueprint.eve_type.name} request canceled"),
@@ -880,7 +897,8 @@ class Request(models.Model):
             )
 
     @classmethod
-    def approvers(cls) -> List[User]:
+    def approvers(cls) -> models.QuerySet[User]:
+        """Return queryset of all approvers."""
         permission = Permission.objects.select_related("content_type").get(
             content_type__app_label=cls._meta.app_label, codename="manage_requests"
         )
