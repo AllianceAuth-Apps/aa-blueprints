@@ -455,26 +455,30 @@ def mark_request(
         character.character.corporation_id for character in character_ownerships
     }
     character_ownership_ids = {character.pk for character in character_ownerships}
+    has_requestor_character_in_owner_corporation = (
+        user_request.blueprint.owner.corporation
+        and user_request.blueprint.owner.corporation.corporation_id in corporation_ids
+    )
+    is_requestor_owner_of_blueprint = (
+        not user_request.blueprint.owner.corporation
+        and user_request.blueprint.owner.character.pk in character_ownership_ids
+    )
+
     if (
-        (
-            user_request.blueprint.owner.corporation
-            and user_request.blueprint.owner.corporation.corporation_id
-            in corporation_ids
-        )
-        or (
-            not user_request.blueprint.owner.corporation
-            and user_request.blueprint.owner.character.pk in character_ownership_ids
-        )
+        has_requestor_character_in_owner_corporation
+        or is_requestor_owner_of_blueprint
         or (can_requestor_edit and user_request.requesting_user == request.user)
     ):
         if closed:
             user_request.closed_at = now()
         else:
             user_request.closed_at = None
+
         user_request.fulfulling_user = fulfulling_user
         user_request.status = status
         user_request.save()
         completed = True
+
     return user_request, completed
 
 

@@ -3,6 +3,7 @@
 from typing import List
 
 from django.contrib.auth.models import Permission, User
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from esi.errors import TokenError
@@ -542,7 +543,10 @@ class Blueprint(models.Model):
         )
 
     def has_industryjob(self):
-        return hasattr(self, "industryjob") and self.industryjob is not None
+        try:
+            return self.industryjob is not None  # pylint: disable = no-member
+        except ObjectDoesNotExist:
+            return False
 
 
 class IndustryJob(models.Model):
