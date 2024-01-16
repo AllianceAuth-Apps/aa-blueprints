@@ -10,6 +10,7 @@ from . import __title__
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
+# TODO: This is currently not used and can potentially be removed
 def fetch_token_for_owner(scopes):
     """returns valid token for owner.
     Needs to be attached on an Owner method !!

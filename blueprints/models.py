@@ -18,7 +18,6 @@ from app_utils.django import users_with_permission
 from app_utils.logging import LoggerAddTag
 
 from . import __title__
-from .decorators import fetch_token_for_owner
 from .managers import BlueprintManager, LocationManager, OwnerManager, RequestManager
 from .providers import esi
 from .validators import validate_material_efficiency, validate_time_efficiency
@@ -109,18 +108,18 @@ class Owner(models.Model):
 
     def update_locations_esi(self):
         if self.corporation:
-            assets = self._fetch_corporate_assets()
             token = self.valid_token(
                 [
                     "esi-universe.read_structures.v1",
                     "esi-assets.read_corporation_assets.v1",
                 ]
             )
+            assets = self._fetch_corporate_assets(token)
         else:
-            assets = self._fetch_personal_assets()
             token = self.valid_token(
                 ["esi-universe.read_structures.v1", "esi-assets.read_assets.v1"]
             )
+            assets = self._fetch_personal_assets(token)
 
         asset_ids = []
         asset_locations = {}
@@ -153,21 +152,21 @@ class Owner(models.Model):
             self.blueprints.values_list("item_id", flat=True)
         )
         if self.corporation:
-            blueprints = self._fetch_corporate_blueprints()
             token = self.valid_token(
                 [
                     "esi-universe.read_structures.v1",
                     "esi-corporations.read_blueprints.v1",
                 ]
             )
+            blueprints = self._fetch_corporate_blueprints(token)
         else:
-            blueprints = self._fetch_personal_blueprints()
             token = self.valid_token(
                 [
                     "esi-universe.read_structures.v1",
                     "esi-characters.read_blueprints.v1",
                 ]
             )
+            blueprints = self._fetch_personal_blueprints(token)
 
         for blueprint in blueprints:
             runs = blueprint["runs"]
@@ -222,21 +221,21 @@ class Owner(models.Model):
             IndustryJob.objects.filter(owner=self).values_list("id", flat=True)
         )
         if self.corporation:
-            jobs = self._fetch_corporate_industry_jobs()
             token = self.valid_token(
                 [
                     "esi-universe.read_structures.v1",
                     "esi-industry.read_corporation_jobs.v1",
                 ]
             )
+            jobs = self._fetch_corporate_industry_jobs(token)
         else:
-            jobs = self._fetch_personal_industry_jobs()
             token = self.valid_token(
                 [
                     "esi-universe.read_structures.v1",
                     "esi-industry.read_character_jobs.v1",
                 ]
             )
+            jobs = self._fetch_personal_industry_jobs(token)
 
         for job in jobs:
             original = IndustryJob.objects.filter(owner=self, id=job["job_id"]).first()
@@ -278,21 +277,18 @@ class Owner(models.Model):
 
         IndustryJob.objects.filter(pk__in=job_ids_to_remove).delete()
 
-    @fetch_token_for_owner(["esi-assets.read_corporation_assets.v1"])
     def _fetch_corporate_assets(self, token) -> list:
         return esi.client.Assets.get_corporations_corporation_id_assets(
             corporation_id=self.corporation_strict.corporation_id,
             token=token.valid_access_token(),
         ).results()
 
-    @fetch_token_for_owner(["esi-assets.read_assets.v1"])
     def _fetch_personal_assets(self, token) -> list:
         return esi.client.Assets.get_characters_character_id_assets(
             character_id=self.eve_character_strict.character_id,
             token=token.valid_access_token(),
         ).results()
 
-    @fetch_token_for_owner(["esi-corporations.read_blueprints.v1"])
     def _fetch_corporate_blueprints(self, token: Token) -> list:
         blueprints = esi.client.Corporation.get_corporations_corporation_id_blueprints(
             corporation_id=self.corporation_strict.corporation_id,
@@ -300,7 +296,6 @@ class Owner(models.Model):
         ).results()
         return blueprints
 
-    @fetch_token_for_owner(["esi-characters.read_blueprints.v1"])
     def _fetch_personal_blueprints(self, token: Token) -> list:
         blueprints = esi.client.Character.get_characters_character_id_blueprints(
             character_id=self.eve_character_strict.character_id,
@@ -308,7 +303,6 @@ class Owner(models.Model):
         ).results()
         return blueprints
 
-    @fetch_token_for_owner(["esi-industry.read_corporation_jobs.v1"])
     def _fetch_corporate_industry_jobs(self, token: Token) -> list:
         jobs = esi.client.Industry.get_corporations_corporation_id_industry_jobs(
             corporation_id=self.corporation_strict.corporation_id,
@@ -316,7 +310,6 @@ class Owner(models.Model):
         ).results()
         return jobs
 
-    @fetch_token_for_owner(["esi-industry.read_character_jobs.v1"])
     def _fetch_personal_industry_jobs(self, token: Token) -> list:
         jobs = esi.client.Industry.get_characters_character_id_industry_jobs(
             character_id=self.eve_character_strict.character_id,
