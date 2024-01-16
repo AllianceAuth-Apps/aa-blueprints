@@ -28,7 +28,6 @@ TASK_DEFAULT_KWARGS = {
 TASK_ESI_KWARGS = {
     **TASK_DEFAULT_KWARGS,
     **{
-        "bind": True,
         "autoretry_for": (
             OSError,
             HTTPBadGateway,
@@ -51,7 +50,7 @@ TASK_ESI_KWARGS = {
         },
     }
 )
-def update_blueprints_for_owner(self, owner_pk):
+def update_blueprints_for_owner(owner_pk):
     """fetches all blueprints for owner from ESI"""
     owner = Owner.objects.get(pk=owner_pk)
     owner.update_blueprints_esi()
@@ -67,7 +66,7 @@ def update_blueprints_for_owner(self, owner_pk):
         },
     }
 )
-def update_industry_jobs_for_owner(self, owner_pk):
+def update_industry_jobs_for_owner(owner_pk):
     """fetches all industry jobs for owner from ESI"""
     owner = Owner.objects.get(pk=owner_pk)
     owner.update_industry_jobs_esi()
@@ -83,7 +82,7 @@ def update_industry_jobs_for_owner(self, owner_pk):
         },
     }
 )
-def update_locations_for_owner(self, owner_pk: int):
+def update_locations_for_owner(owner_pk: int):
     """fetches all blueprints for owner from ESI"""
     owner = Owner.objects.get(pk=owner_pk)
     owner.update_locations_esi()
@@ -117,6 +116,7 @@ def update_all_locations():
     **{
         **TASK_ESI_KWARGS,
         **{
+            "bind": True,
             "base": QueueOnce,
             "once": {"keys": ["id"], "graceful": True},
             "max_retries": None,
