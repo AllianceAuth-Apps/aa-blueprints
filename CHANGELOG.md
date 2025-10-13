@@ -7,6 +7,16 @@ and this project adheres to [PEP-440](https://www.python.org/dev/peps/pep-0440/)
 
 ## [Unreleased]
 
+## [1.8.0] - 2025-10-12
+
+### Update notes
+
+This update is critical in order to avoid potential service degredation related to the rate limit change of the ESI status endpoint on Oct 13, 2025. See [CHANGELOG](https://gitlab.com/ErikKalkoken/allianceauth-app-utils/-/blob/master/CHANGELOG.md#1270---2025-10-12) of app_utils for more information.
+
+### Changed
+
+- Updated tasks to work with changed status endpoint.
+
 ## [1.7.0] - 2024-01-16
 
 ### Changed
