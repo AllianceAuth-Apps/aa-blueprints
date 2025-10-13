@@ -1,7 +1,5 @@
 """Tasks for Blueprints."""
 
-import random
-
 from bravado.exception import HTTPBadGateway, HTTPGatewayTimeout, HTTPServiceUnavailable
 from celery import shared_task
 
@@ -9,7 +7,7 @@ from esi.models import Token
 
 from allianceauth.services.hooks import get_extension_logger
 from allianceauth.services.tasks import QueueOnce
-from app_utils.esi import EsiErrorLimitExceeded, EsiOffline
+from app_utils.esi import retry_task_on_esi_error_and_offline
 from app_utils.logging import LoggerAddTag
 
 from . import __title__
@@ -132,20 +130,7 @@ def update_structure_esi(self, id: int, token_pk: int):
     """
     token = Token.objects.get(pk=token_pk)
 
-    try:
+    with retry_task_on_esi_error_and_offline(
+        self, f"blueprints: Update structure {id}"
+    ):
         Location.objects.structure_update_or_create_esi(id=id, token=token)
-
-    except EsiOffline as ex:
-        logger.warning(
-            "Location #%s: ESI appears to be offline. Trying again in 30 minutes.", id
-        )
-        raise self.retry(countdown=30 * 60 + int(random.uniform(1, 20))) from ex
-
-    except EsiErrorLimitExceeded as ex:
-        logger.warning(
-            "Location #%s: ESI error limit threshold reached. "
-            "Trying again in %s seconds",
-            id,
-            ex.retry_in,
-        )
-        raise self.retry(countdown=ex.retry_in) from ex

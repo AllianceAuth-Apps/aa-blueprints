@@ -347,7 +347,7 @@ class OwnerQuerySet(models.QuerySet):
 
 
 class OwnerManagerBase(models.Manager):
-    ...
+    pass
 
 
 OwnerManager = OwnerManagerBase.from_queryset(OwnerQuerySet)

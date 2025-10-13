@@ -4,7 +4,7 @@ from celery.exceptions import Retry
 
 from django.test import override_settings
 
-from app_utils.esi import EsiErrorLimitExceeded, EsiOffline
+from app_utils.esi_testing import build_http_error
 from app_utils.testing import NoSocketsTestCase, create_user_from_evecharacter
 
 from blueprints import tasks
@@ -81,7 +81,7 @@ class TestUpdateStructures(NoSocketsTestCase):
         self, mock_structure_update_or_create_esi
     ):
         # given
-        mock_structure_update_or_create_esi.side_effect = EsiOffline
+        mock_structure_update_or_create_esi.side_effect = build_http_error(502)
 
         # when/then
         with self.assertRaises(Retry):
@@ -91,7 +91,7 @@ class TestUpdateStructures(NoSocketsTestCase):
         self, mock_structure_update_or_create_esi
     ):
         # given
-        mock_structure_update_or_create_esi.side_effect = EsiErrorLimitExceeded
+        mock_structure_update_or_create_esi.side_effect = build_http_error(420)
 
         # when/then
         with self.assertRaises(Retry):
@@ -101,7 +101,7 @@ class TestUpdateStructures(NoSocketsTestCase):
         self, mock_structure_update_or_create_esi
     ):
         # given
-        mock_structure_update_or_create_esi.side_effect = OSError
+        mock_structure_update_or_create_esi.side_effect = build_http_error(500)
 
         # when/then
         with self.assertRaises(OSError):
