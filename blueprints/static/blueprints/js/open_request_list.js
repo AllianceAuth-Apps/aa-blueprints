@@ -39,7 +39,7 @@ $(document).ready(function () {
             { data: "requestor" },
             { data: "owner_name" },
             {
-                className: "right-column",
+                className: "text-end",
                 data: "request_id",
             },
             // hidden columns
@@ -76,7 +76,7 @@ $(document).ready(function () {
 
                         if (row.status === "OP") {
                             buttons +=
-                                '<button class="btn btn-info btn-sm btn-square" data-toggle="modal" data-target="#modalViewRequestContainer" data-ajax_url="' +
+                                '<button class="btn btn-info btn-sm btn-square" data-bs-toggle="modal" data-bs-target="#modalViewRequestContainer" data-ajax_url="' +
                                 viewRequestModalUrl +
                                 "?request_id=" +
                                 data +
@@ -92,7 +92,7 @@ $(document).ready(function () {
                             return buttons;
                         } else if (row.status === "IP") {
                             buttons +=
-                                '<button class="btn btn-info btn-sm btn-square" data-toggle="modal" data-target="#modalViewRequestContainer" data-ajax_url="' +
+                                '<button class="btn btn-info btn-sm btn-square" data-bs-toggle="modal" data-bs-target="#modalViewRequestContainer" data-ajax_url="' +
                                 viewRequestModalUrl +
                                 "?request_id=" +
                                 data +
@@ -154,7 +154,7 @@ $(document).ready(function () {
                         $(rows)
                             .eq(i)
                             .before(
-                                '<tr class="tr-group"><td colspan="6">' +
+                                '<tr class="tr-group fw-bold bg-secondary"><td colspan="6">' +
                                     group +
                                     "</td></tr>"
                             );

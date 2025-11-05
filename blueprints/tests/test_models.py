@@ -315,7 +315,7 @@ class TestCorporateOwner(NoSocketsTestCase):
 
         self.owner.update_locations_esi()
 
-        self.assertEquals(
+        self.assertEqual(
             Location.objects.get(id=1100000000001).parent,
             Location.objects.get(id=60003760),
         )
@@ -324,7 +324,7 @@ class TestCorporateOwner(NoSocketsTestCase):
         mock_esi_managers.client = esi_client_stub
         mock_esi_models.client = esi_client_stub
         self.owner.update_blueprints_esi()
-        self.assertEquals(Blueprint.objects.filter(eve_type_id=33519).count(), 1)
+        self.assertEqual(Blueprint.objects.filter(eve_type_id=33519).count(), 1)
 
     def test_should_update_industry_jobs_esi(self, mock_esi_managers, mock_esi_models):
         # given
@@ -335,7 +335,7 @@ class TestCorporateOwner(NoSocketsTestCase):
         # when
         self.owner.update_industry_jobs_esi()
         # then
-        self.assertEquals(self.owner.jobs.count(), 1)
+        self.assertEqual(self.owner.jobs.count(), 1)
         obj = self.owner.jobs.first()
         self.assertEqual(obj.id, 100000002)
         self.assertEqual(obj.activity, 5)
@@ -430,7 +430,7 @@ class TestPersonalOwner(NoSocketsTestCase):
 
         self.owner.update_locations_esi()
 
-        self.assertEquals(
+        self.assertEqual(
             Location.objects.get(id=1100000000001).parent,
             Location.objects.get(id=60003760),
         )
@@ -439,7 +439,7 @@ class TestPersonalOwner(NoSocketsTestCase):
         mock_esi_managers.client = esi_client_stub
         mock_esi_models.client = esi_client_stub
         self.owner.update_blueprints_esi()
-        self.assertEquals(Blueprint.objects.filter(eve_type_id=33519).count(), 1)
+        self.assertEqual(Blueprint.objects.filter(eve_type_id=33519).count(), 1)
 
     def test_should_update_industry_jobs_esi(self, mock_esi_managers, mock_esi_models):
         # given
@@ -450,7 +450,7 @@ class TestPersonalOwner(NoSocketsTestCase):
         # when
         self.owner.update_industry_jobs_esi()
         # then
-        self.assertEquals(self.owner.jobs.count(), 1)
+        self.assertEqual(self.owner.jobs.count(), 1)
         obj = self.owner.jobs.first()
         self.assertEqual(obj.id, 100000001)
         self.assertEqual(obj.activity, 5)

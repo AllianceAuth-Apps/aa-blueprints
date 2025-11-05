@@ -7,7 +7,7 @@ name = "aa-blueprints"
 dynamic = ["version", "description"]
 readme = "README.md"
 license = { file = "LICENSE" }
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 authors = [
     { name = "Erik Kalkoken", email = "kalkoken87@gmail.com" },
     { name = "Rebecca Murphy", email = "rebecca@rcmurphy.me" },
@@ -15,22 +15,21 @@ authors = [
 classifiers = [
     "Environment :: Web Environment",
     "Framework :: Django",
-    "Framework :: Django :: 4.0",
     "Framework :: Django :: 4.2",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Internet :: WWW/HTTP",
     "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
 ]
 dependencies = [
     "allianceauth-app-utils>=1.27",
-    "allianceauth>=3,<5",
+    "allianceauth>=4.8,<5",
     "dj-datatables-view",
     "django-eveuniverse>=1.5",
 ]

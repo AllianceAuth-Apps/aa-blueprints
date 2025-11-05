@@ -27,7 +27,7 @@ $(document).ready(function () {
             { data: "runs" },
             { data: "owner_name" },
             {
-                className: "right-column",
+                className: "text-end",
                 data: "request_id",
             },
             // hidden columns,
@@ -61,7 +61,7 @@ $(document).ready(function () {
                 render: function (data, type, row) {
                     if (type === "display") {
                         var buttons =
-                            '<button class="btn btn-info btn-sm btn-square" data-toggle="modal" data-target="#modalViewRequestContainer" data-ajax_url="' +
+                            '<button class="btn btn-info btn-sm btn-square" data-bs-toggle="modal" data-bs-target="#modalViewRequestContainer" data-ajax_url="' +
                             viewRequestModalUrl +
                             "?request_id=" +
                             data +
@@ -110,7 +110,7 @@ $(document).ready(function () {
                     if (last !== group) {
                         $(rows)
                             .eq(i)
-                            .before('<tr class="tr-group"><td colspan="5">' + group + "</td></tr>");
+                            .before('<tr class="tr-group fw-bold bg-secondary"><td colspan="5">' + group + "</td></tr>");
 
                         last = group;
                     }
