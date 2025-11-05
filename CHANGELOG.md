@@ -7,11 +7,18 @@ and this project adheres to [PEP-440](https://www.python.org/dev/peps/pep-0440/)
 
 ## [Unreleased]
 
+## [2.0.0] - 2025-11-05
+
+### Changed
+
+- BREAKING CHANGE: Support dropped for AA3
+- Templates migrated to AA4 / Bootstrap 5 - Big thanks to @Geuthur for the contribution!
+
 ## [1.8.0] - 2025-10-12
 
 ### Update notes
 
-This update is critical in order to avoid potential service degredation related to the rate limit change of the ESI status endpoint on Oct 13, 2025. See [CHANGELOG](https://gitlab.com/ErikKalkoken/allianceauth-app-utils/-/blob/master/CHANGELOG.md#1270---2025-10-12) of app_utils for more information.
+This update is critical in order to avoid potential service degradation related to the rate limit change of the ESI status endpoint on Oct 13, 2025. See [CHANGELOG](https://gitlab.com/ErikKalkoken/allianceauth-app-utils/-/blob/master/CHANGELOG.md#1270---2025-10-12) of app_utils for more information.
 
 ### Changed
 
@@ -99,7 +106,7 @@ Thanks to @ppfeufer for your contribution!
 
 ### Fixed
 
-- Variable name showing in notifiation instead of owner name when adding blueprint owner. (#13)
+- Variable name showing in notification instead of owner name when adding blueprint owner. (#13)
 
 ## [1.2.0] - 2021-11-18
 
