@@ -27,6 +27,7 @@ $(document).ready(function () {
         ajax: listDataFddUrl,
         autoSize: false,
         bootstrap: true,
+        bootstrap_version: 5,
     }
 
     if (canViewLocations) {
@@ -58,7 +59,7 @@ $(document).ready(function () {
                 data: "eve_type"
             },
             {
-                className: "right-column",
+                className: "text-end",
                 name: "quantity",
                 target: [2],
                 data: 'quantity'
@@ -100,8 +101,8 @@ $(document).ready(function () {
                     if (type === "display") {
                         return (
                             '<button class="btn btn-sm btn-info btn-square" ' +
-                            'data-toggle="modal" ' +
-                            'data-target="#modalViewBlueprintContainer" ' +
+                            'data-bs-toggle="modal" ' +
+                            'data-bs-target="#modalViewBlueprintContainer" ' +
                             'data-ajax_url="' + viewBlueprintModalUrl + "?blueprint_id=" + data + '" ' +
                             'aria-label="' + viewBlueprintText + '" ' +
                             'title="' + viewBlueprintText + '">' +
@@ -135,7 +136,7 @@ $(document).ready(function () {
                             $(rows)
                                 .eq(i)
                                 .before(
-                                    '<tr class="tr-group"><td colspan="9">' +
+                                    '<tr class="tr-group fw-bold bg-secondary"><td colspan="9">' +
                                     group +
                                     "</td></tr>"
                                 );

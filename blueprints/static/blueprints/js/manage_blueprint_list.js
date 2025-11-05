@@ -24,7 +24,7 @@ $(document).ready(function () {
             { data: "name" },
             { data: "quantity" },
             {
-                className: "right-column",
+                className: "text-end",
                 data: "id",
             },
             // hidden columns,

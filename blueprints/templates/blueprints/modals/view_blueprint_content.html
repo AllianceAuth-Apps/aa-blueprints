@@ -1,13 +1,10 @@
 {% load i18n %}
-{% load static %}
 {% load humanize %}
 
 <div class="modal-content">
     <div class="modal-header">
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">
-            &times;
-        </span></button>
-        <h4 class="modal-title" id="modalTitle">{% translate "View Blueprint" %}</h4>
+        <button type="button" class="btn-close position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Close"></button>
+        <h5 class="modal-title" id="modalTitle">{% translate "View Blueprint" %}</h5>
     </div>
 
     <div class="modal-body">
@@ -15,23 +12,29 @@
             <h4 id="blueprint-title">{{ blueprint.icn }} {{ blueprint.nme }}</h4>
         </div>
         <ul class="nav nav-tabs" role="tablist">
-            <li class="active">
-                <a href="#tab-summary" data-toggle="tab">{% translate "Summary" %}</a>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" aria-controls="tab-summary" role="tab" data-bs-toggle="tab" data-bs-target="#tab-summary">
+                    {% translate "Summary" %}
+                </button>
             </li>
             {% if blueprint.job %}
-            <li>
-                <a href="#tab-current-job" data-toggle="tab">{% translate "Current Job" %}</a>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" aria-controls="tab-current-job" role="tab" data-bs-toggle="tab" data-bs-target="#tab-current-job">
+                    {% translate "Current Job" %}
+                </button>
             </li>
             {% endif %}
             {% if perms.blueprints.request_blueprints and blueprint.rns == "" and not blueprint.frm %}
-            <li>
-                <a href="#tab-create-request" data-toggle="tab">{% translate "Create Request" %}</a>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" aria-controls="tab-create-request" role="tab" data-bs-toggle="tab" data-bs-target="#tab-create-request">
+                    {% translate "Create Request" %}
+                </button>
             </li>
             {% endif %}
         </ul>
         <div class="tab-content">
-            <div class="tab-pane panel active panel-default" id="tab-summary">
-                <div class="panel-body modal-tab">
+            <div class="tab-pane card active border-top-0 rounded-top-0" id="tab-summary">
+                <div class="card-body modal-tab">
                         <div class="row description-row">
                             <div class="col-sm-4">{% translate "Location name" %}</div>
                             <div class='col-sm-8'>{{ blueprint.loc }}</div>
@@ -57,8 +60,8 @@
                 </div>
             </div>
             {% if blueprint.job %}
-            <div class="tab-pane panel panel-default" id="tab-current-job">
-                <div class="panel-body modal-tab">
+            <div class="tab-pane card border-top-0 rounded-top-0" id="tab-current-job">
+                <div class="card-body modal-tab">
                     <div class="row description-row">
                         <div class="col-sm-4">{% translate "Activity" %}</div>
                         <div class='col-sm-8'>{{ blueprint.job.activity }}</div>
@@ -84,8 +87,8 @@
             {% endif %}
             {% if perms.blueprints.request_blueprints and blueprint.rns == "" and not blueprint.frm %}
 
-            <div class="tab-pane panel panel-default" id="tab-create-request">
-                <div class="panel-body modal-tab">
+            <div class="tab-pane card border-top-0 rounded-top-0" id="tab-create-request">
+                <div class="card-body modal-tab">
                     <form action="{% url 'blueprints:create_request' %}" method="POST" class="form-horizontal">
 
                         <input type=hidden name="pk" value="{{ blueprint.pk }}">
@@ -114,6 +117,7 @@
         </div>
     </div>
 
-    <div class="modal-footer">
-        </div>
+    <div class="modal-footer d-flex justify-content-between">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Close" %}</button>
+    </div>
 </div>
