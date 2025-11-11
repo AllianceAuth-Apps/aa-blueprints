@@ -7,6 +7,14 @@ and this project adheres to [PEP-440](https://www.python.org/dev/peps/pep-0440/)
 
 ## [Unreleased]
 
+## [2.1.0] - 2025-11-11
+
+This release adds basic support for ESI rate limits.
+
+### Changed
+
+- Added support for ESI rate limits
+
 ## [2.0.0] - 2025-11-05
 
 ### Changed
