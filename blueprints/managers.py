@@ -282,7 +282,7 @@ class LocationManagerBase(models.Manager):
         id = int(id)
         location, created = self.get_or_create(id=id)
         task_update_structure_esi.apply_async(
-            kwargs={"id": id, "token_pk": token.pk},
+            kwargs={"structure_id": id, "token_pk": token.pk},
             priority=DEFAULT_TASK_PRIORITY,
         )
         return location, created

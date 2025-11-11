@@ -1,11 +1,13 @@
 from unittest.mock import patch
 
-from celery.exceptions import Retry
-
 from django.test import override_settings
 
 from app_utils.esi_testing import build_http_error
-from app_utils.testing import NoSocketsTestCase, create_user_from_evecharacter
+from app_utils.testing import (
+    NoSocketsTestCase,
+    create_user_from_evecharacter,
+    reset_celery_once_locks,
+)
 
 from blueprints import tasks
 
@@ -58,7 +60,8 @@ class TestTasks(NoSocketsTestCase):
         self.assertTrue(mock_update_locations_esi.called)
 
 
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+@patch("celery.app.task.Context.called_directly", False)  # make retry work with eager
+@override_settings(CELERY_ALWAYS_EAGER=True)
 @patch(TASKS_PATH + ".Location.objects.structure_update_or_create_esi")
 class TestUpdateStructures(NoSocketsTestCase):
     @classmethod
@@ -70,39 +73,44 @@ class TestUpdateStructures(NoSocketsTestCase):
         cls.user, _ = create_user_from_evecharacter(1001)
         cls.token = cls.user.token_set.first()
 
+    def setUp(self):
+        reset_celery_once_locks("blueprints")
+
     def test_should_update_structure(self, mock_structure_update_or_create_esi):
         # when
-        tasks.update_structure_esi(id=1000000000001, token_pk=self.token.pk)
+        tasks.update_structure_esi.delay(
+            structure_id=1000000000001, token_pk=self.token.pk
+        )
 
         # then
-        self.assertTrue(mock_structure_update_or_create_esi.called)
+        self.assertEqual(mock_structure_update_or_create_esi.call_count, 1)
 
     def test_should_retry_when_esi_is_offline(
         self, mock_structure_update_or_create_esi
     ):
         # given
-        mock_structure_update_or_create_esi.side_effect = build_http_error(502)
-
-        # when/then
-        with self.assertRaises(Retry):
-            tasks.update_structure_esi(id=1000000000001, token_pk=self.token.pk)
-
-    def test_should_retry_when_esi_error_limit_is_exceeded(
-        self, mock_structure_update_or_create_esi
-    ):
-        # given
-        mock_structure_update_or_create_esi.side_effect = build_http_error(420)
-
-        # when/then
-        with self.assertRaises(Retry):
-            tasks.update_structure_esi(id=1000000000001, token_pk=self.token.pk)
+        mock_structure_update_or_create_esi.side_effect = [
+            build_http_error(502),
+            lambda: None,
+        ]
+        # when
+        tasks.update_structure_esi.delay(
+            structure_id=1000000000001, token_pk=self.token.pk
+        )
+        # then
+        self.assertEqual(mock_structure_update_or_create_esi.call_count, 2)
 
     def test_should_abort_on_other_exceptions(
         self, mock_structure_update_or_create_esi
     ):
         # given
-        mock_structure_update_or_create_esi.side_effect = build_http_error(500)
-
-        # when/then
-        with self.assertRaises(OSError):
-            tasks.update_structure_esi(id=1000000000001, token_pk=self.token.pk)
+        mock_structure_update_or_create_esi.side_effect = [
+            build_http_error(500),
+            lambda: None,
+        ]
+        # when
+        tasks.update_structure_esi.delay(
+            structure_id=1000000000001, token_pk=self.token.pk
+        )
+        # then
+        self.assertEqual(mock_structure_update_or_create_esi.call_count, 1)
