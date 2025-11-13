@@ -6,7 +6,7 @@ from esi.models import Token
 
 from allianceauth.services.hooks import get_extension_logger
 from allianceauth.services.tasks import QueueOnce
-from app_utils.esi import retry_task_on_esi_issue
+from app_utils.esi import retry_task_on_esi_error_and_offline
 from app_utils.logging import LoggerAddTag
 
 from . import __title__
@@ -35,7 +35,7 @@ def update_all_blueprints():
 def update_blueprints_for_owner(self: Task, owner_pk: int):
     """Fetch all blueprints for an owner from ESI."""
     owner = Owner.objects.get(pk=owner_pk)
-    with retry_task_on_esi_issue(self):
+    with retry_task_on_esi_error_and_offline(self):
         owner.update_blueprints_esi()
 
 
@@ -57,7 +57,7 @@ def update_all_industry_jobs():
 def update_industry_jobs_for_owner(self: Task, owner_pk: int):
     """Fetch all industry jobs for an owner from ESI."""
     owner = Owner.objects.get(pk=owner_pk)
-    with retry_task_on_esi_issue(self):
+    with retry_task_on_esi_error_and_offline(self):
         owner.update_industry_jobs_esi()
 
 
@@ -79,7 +79,7 @@ def update_all_locations():
 def update_locations_for_owner(self: Task, owner_pk: int):
     """Fetch all blueprints for an owner from ESI."""
     owner = Owner.objects.get(pk=owner_pk)
-    with retry_task_on_esi_issue(self):
+    with retry_task_on_esi_error_and_offline(self):
         owner.update_locations_esi()
 
 
@@ -93,5 +93,5 @@ def update_locations_for_owner(self: Task, owner_pk: int):
 def update_structure_esi(self, structure_id: int, token_pk: int):
     """Update a structure object from ESI."""
     token = Token.objects.get(pk=token_pk)
-    with retry_task_on_esi_issue(self):
+    with retry_task_on_esi_error_and_offline(self):
         Location.objects.structure_update_or_create_esi(id=structure_id, token=token)
