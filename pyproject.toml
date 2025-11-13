@@ -28,7 +28,7 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
 ]
 dependencies = [
-    "allianceauth-app-utils>=1.28,<2",
+    "allianceauth-app-utils>=1.28",
     "allianceauth>=4.8,<5",
     "dj-datatables-view",
     "django-eveuniverse>=1.6",

@@ -9,6 +9,14 @@ and this project adheres to [PEP-440](https://www.python.org/dev/peps/pep-0440/)
 
 ## [2.1.1] - 2025-11-13
 
+### Update notes
+
+In case you have allianceauth-app-utils 2.x installed please make sure to downgrade to the latest stable 1.x version, e.g. with the following command:
+
+```sh
+pip install allianceauth-app-utils==1.28.0
+````
+
 ### Changed
 
 - Downgraded to allianceauth-app-utils 1.28
