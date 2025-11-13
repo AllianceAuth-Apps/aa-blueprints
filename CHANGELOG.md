@@ -7,6 +7,12 @@ and this project adheres to [PEP-440](https://www.python.org/dev/peps/pep-0440/)
 
 ## [Unreleased]
 
+## [2.1.1] - 2025-11-13
+
+### Changed
+
+- Downgraded to allianceauth-app-utils 1.28
+
 ## [2.1.0] - 2025-11-11
 
 This release adds basic support for ESI rate limits.
