@@ -28,11 +28,14 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
 ]
 dependencies = [
-    "allianceauth-app-utils>=1.28",
+    "allianceauth-app-utils>=1.32",
     "allianceauth>=4.8,<5",
     "dj-datatables-view",
-    "django-eveuniverse>=1.6",
+    "django-eveuniverse>=2",
 ]
+
+[project.optional-dependencies]
+test = ["coverage", "factory_boy", "pook"]
 
 [project.urls]
 Homepage = "https://gitlab.com/eclipse-expeditions/aa-blueprints"

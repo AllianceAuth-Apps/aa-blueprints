@@ -3,5 +3,5 @@
 # pylint: disable = invalid-name
 default_app_config = "blueprints.apps.BlueprintsConfig"
 
-__version__ = "2.1.1"
+__version__ = "3.0.0dev1"
 __title__ = "Blueprints"
