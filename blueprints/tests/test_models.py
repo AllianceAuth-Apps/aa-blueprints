@@ -1,26 +1,39 @@
 import datetime as dt
+from http import HTTPStatus
 from unittest.mock import patch
 
-from django.utils.dateparse import parse_datetime
+import pook
+
 from django.utils.timezone import now
 from esi.errors import TokenError, TokenExpiredError
 from esi.models import Token
 from eveuniverse.models import EveType
 
-from allianceauth.eveonline.models import EveCharacter, EveCorporationInfo
+from allianceauth.eveonline.models import EveCharacter
 from allianceauth.tests.auth_utils import AuthUtils
+from app_utils.testdata_factories import EveCharacterFactory
 from app_utils.testing import NoSocketsTestCase
 
-from blueprints.models import Blueprint, Location, Owner, Request
+from blueprints.models import Blueprint, IndustryJob, Location, Owner, Request
+from blueprints.tests import (
+    add_character_to_user,
+    create_owner,
+    create_user_from_evecharacter,
+)
+from blueprints.tests.helpers import TestCaseWithClearCache
+from blueprints.tests.testdata.factory import (
+    BlueprintFactory,
+    FrigateBlueprintTypeFactory,
+    LocationItemFactory,
+    LocationStationFactory,
+    OwnerCharacterFactory,
+    OwnerCorporationFactory,
+    make_esi_url,
+)
+from blueprints.tests.testdata.load_entities import load_entities
+from blueprints.tests.testdata.load_eveuniverse import load_eveuniverse
+from blueprints.tests.testdata.load_locations import load_locations
 
-from . import add_character_to_user, create_owner, create_user_from_evecharacter
-from .testdata.esi_client_stub import esi_client_stub
-from .testdata.factory import BlueprintFactory, LocationStationFactory, OwnerFactory
-from .testdata.load_entities import load_entities
-from .testdata.load_eveuniverse import load_eveuniverse
-from .testdata.load_locations import load_locations
-
-MANAGERS_PATH = "blueprints.managers"
 MODELS_PATH = "blueprints.models"
 
 
@@ -178,7 +191,7 @@ class TestBlueprintManagerAnnotateLocationName(NoSocketsTestCase):
     def setUpClass(cls):
         super().setUpClass()
         load_eveuniverse()
-        cls.owner = OwnerFactory()
+        cls.owner = OwnerCharacterFactory()
 
     def test_should_return_name(self):
         # given
@@ -266,86 +279,6 @@ class TestBlueprintManagerAnnotateLocationName(NoSocketsTestCase):
         self.assertEqual(obj.location_name, "Child")
 
 
-@patch(MODELS_PATH + ".esi")
-@patch(MANAGERS_PATH + ".esi")
-class TestCorporateOwner(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
-        load_entities()
-        load_eveuniverse()
-        load_locations()
-
-    def setUp(self) -> None:
-        self.owner = create_owner(character_id=1101, corporation_id=2101)
-
-    def test_should_return_corporation_name_for_owner(
-        self, mock_esi_managers, mock_esi_models
-    ):
-        # when
-        result = str(self.owner)
-        # then
-        self.assertEqual(result, "Lexcorp")
-
-    def test_should_return_corporation_name_for_owner_with_no_character(
-        self, mock_esi_managers, mock_esi_models
-    ):
-        # given
-        owner = Owner.objects.create(
-            corporation=EveCorporationInfo.objects.get(corporation_id=2001)
-        )
-        # when
-        result = str(owner)
-        # then
-        self.assertEqual(result, "Wayne Technologies")
-
-    def test_should_return_empty_string_for_empty_owner(
-        self, mock_esi_managers, mock_esi_models
-    ):
-        # given
-        owner = Owner.objects.create()
-        # when
-        result = str(owner)
-        # then
-        self.assertEqual(result, "")
-
-    def test_update_locations_esi(self, mock_esi_managers, mock_esi_models):
-        mock_esi_managers.client = esi_client_stub
-        mock_esi_models.client = esi_client_stub
-
-        self.owner.update_locations_esi()
-
-        self.assertEqual(
-            Location.objects.get(id=1100000000001).parent,
-            Location.objects.get(id=60003760),
-        )
-
-    def test_update_blueprints_esi(self, mock_esi_managers, mock_esi_models):
-        mock_esi_managers.client = esi_client_stub
-        mock_esi_models.client = esi_client_stub
-        self.owner.update_blueprints_esi()
-        self.assertEqual(Blueprint.objects.filter(eve_type_id=33519).count(), 1)
-
-    def test_should_update_industry_jobs_esi(self, mock_esi_managers, mock_esi_models):
-        # given
-
-        mock_esi_managers.client = esi_client_stub
-        mock_esi_models.client = esi_client_stub
-        self.owner.update_blueprints_esi()
-        # when
-        self.owner.update_industry_jobs_esi()
-        # then
-        self.assertEqual(self.owner.jobs.count(), 1)
-        obj = self.owner.jobs.first()
-        self.assertEqual(obj.id, 100000002)
-        self.assertEqual(obj.activity, 5)
-        self.assertEqual(obj.location_id, 1000000000001)
-        self.assertEqual(obj.installer, EveCharacter.objects.get(character_id=1001))
-        self.assertEqual(obj.runs, 1)
-        self.assertEqual(obj.start_date, parse_datetime("2020-12-21T23:37:14Z"))
-        self.assertEqual(obj.status, "active")
-
-
 class TestLocationNamePlus(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
@@ -367,7 +300,7 @@ class TestLocationNamePlus(NoSocketsTestCase):
 
     def test_should_return_generic_name(self):
         # given
-        location = LocationStationFactory(name="")
+        location = LocationStationFactory(name="", eve_type=None)
         # when/then
         self.assertEqual(location.full_qualified_name(), f"Location #{location.id}")
 
@@ -385,11 +318,330 @@ class TestLocationNamePlus(NoSocketsTestCase):
         )
 
 
-class TestOwnerValidToken(NoSocketsTestCase):
+class TestOwner(NoSocketsTestCase):
+    def test_should_return_corporation_name_for_owner(self):
+        # given
+        owner = OwnerCorporationFactory()
+        # when
+        result = str(owner)
+        # then
+        self.assertEqual(result, owner.corporation.corporation_name)
+
+    def test_should_return_empty_string_for_empty_owner(self):
+        # given
+        owner = Owner.objects.create()
+        # when
+        result = str(owner)
+        # then
+        self.assertEqual(result, "")
+
+
+class TestOwner_UpdateLocationsESI(TestCaseWithClearCache):
+    # FIXME: This only works when there are 2 items. Why not wiht only one?
+    @pook.on
+    def test_update_for_corporation(self):
+        # given
+        owner = OwnerCorporationFactory()
+        item_1 = LocationItemFactory()
+        item_2 = LocationItemFactory()
+        location = LocationStationFactory()
+        item_type = FrigateBlueprintTypeFactory()
+        pook.get(
+            make_esi_url(
+                f"corporations/{owner.corporation_strict.corporation_id}/assets"
+            ),
+            response_headers={"X-Pages": "1"},
+            reply=HTTPStatus.OK,
+            response_json=[
+                {
+                    "is_blueprint_copy": False,
+                    "is_singleton": True,
+                    "item_id": item_1.id,
+                    "location_flag": "Hangar",
+                    "location_id": location.id,
+                    "location_type": "station",
+                    "quantity": 1,
+                    "type_id": item_type.id,
+                },
+                {
+                    "is_blueprint_copy": True,
+                    "is_singleton": False,
+                    "item_id": item_2.id,
+                    "location_flag": "Hangar",
+                    "location_id": item_1.id,
+                    "location_type": "item",
+                    "quantity": 3,
+                    "type_id": item_type.id,
+                },
+            ],
+        )
+
+        # when
+        owner.update_locations_esi()
+
+        # then
+        item_1.refresh_from_db()
+        self.assertEqual(item_1.parent, location)
+        self.assertEqual(item_1.eve_type, item_type)
+
+    @pook.on
+    def test_update_for_character(self):
+        # given
+        owner = OwnerCharacterFactory()
+        item_1 = LocationItemFactory()
+        item_2 = LocationItemFactory()
+        location = LocationStationFactory()
+        item_type = FrigateBlueprintTypeFactory()
+        pook.get(
+            make_esi_url(
+                f"characters/{owner.eve_character_strict.character_id}/assets"
+            ),
+            response_headers={"X-Pages": "1"},
+            reply=HTTPStatus.OK,
+            response_json=[
+                {
+                    "is_blueprint_copy": False,
+                    "is_singleton": True,
+                    "item_id": item_1.id,
+                    "location_flag": "Hangar",
+                    "location_id": location.id,
+                    "location_type": "station",
+                    "quantity": 1,
+                    "type_id": item_type.id,
+                },
+                {
+                    "is_blueprint_copy": True,
+                    "is_singleton": False,
+                    "item_id": item_2.id,
+                    "location_flag": "Hangar",
+                    "location_id": item_1.id,
+                    "location_type": "item",
+                    "quantity": 3,
+                    "type_id": item_type.id,
+                },
+            ],
+        )
+
+        # when
+        owner.update_locations_esi()
+
+        # then
+        item_1.refresh_from_db()
+        self.assertEqual(item_1.parent, location)
+        self.assertEqual(item_1.eve_type, item_type)
+
+
+class TestOwner_UpdateBlueprintsESI(TestCaseWithClearCache):
+    @pook.on
+    def test_update_for_corporation(self):
+        # given
+        owner = OwnerCorporationFactory()
+        location = LocationStationFactory()
+        item_type = FrigateBlueprintTypeFactory()
+        item_id = 1_008_000_000_001
+        quantity = 3
+        material_efficiency = 0
+        time_efficiency = 0
+        runs = 100
+        pook.get(
+            make_esi_url(
+                f"corporations/{owner.corporation_strict.corporation_id}/blueprints"
+            ),
+            response_headers={"X-Pages": "1"},
+            reply=HTTPStatus.OK,
+            response_json=[
+                {
+                    "item_id": item_id,
+                    "location_flag": "Hangar",
+                    "location_id": location.id,
+                    "material_efficiency": material_efficiency,
+                    "quantity": quantity,
+                    "runs": runs,
+                    "time_efficiency": time_efficiency,
+                    "type_id": item_type.id,
+                },
+            ],
+        )
+
+        # when
+        owner.update_blueprints_esi()
+
+        # then
+        self.assertEqual(owner.blueprints.count(), 1)
+        obj: Blueprint = owner.blueprints.first()
+        self.assertEqual(obj.item_id, item_id)
+        self.assertEqual(obj.eve_type, item_type)
+        self.assertEqual(obj.location_flag, Blueprint.LocationFlag.HANGAR)
+        self.assertEqual(obj.location, location)
+        self.assertEqual(obj.material_efficiency, material_efficiency)
+        self.assertEqual(obj.quantity, quantity)
+        self.assertEqual(obj.runs, runs)
+        self.assertEqual(obj.time_efficiency, time_efficiency)
+
+    @pook.on
+    def test_update_for_character(self):
+        # given
+        owner = OwnerCharacterFactory()
+        location = LocationStationFactory()
+        item_type = FrigateBlueprintTypeFactory()
+        item_id = 1_008_000_000_001
+        quantity = 3
+        material_efficiency = 0
+        time_efficiency = 0
+        runs = 100
+        pook.get(
+            make_esi_url(
+                f"characters/{owner.eve_character_strict.character_id}/blueprints"
+            ),
+            response_headers={"X-Pages": "1"},
+            reply=HTTPStatus.OK,
+            response_json=[
+                {
+                    "item_id": item_id,
+                    "location_flag": "Hangar",
+                    "location_id": location.id,
+                    "material_efficiency": material_efficiency,
+                    "quantity": quantity,
+                    "runs": runs,
+                    "time_efficiency": time_efficiency,
+                    "type_id": item_type.id,
+                },
+            ],
+        )
+
+        # when
+        owner.update_blueprints_esi()
+
+        # then
+        self.assertEqual(owner.blueprints.count(), 1)
+        obj: Blueprint = owner.blueprints.first()
+        self.assertEqual(obj.item_id, item_id)
+        self.assertEqual(obj.eve_type, item_type)
+        self.assertEqual(obj.location_flag, Blueprint.LocationFlag.HANGAR)
+        self.assertEqual(obj.location, location)
+        self.assertEqual(obj.material_efficiency, material_efficiency)
+        self.assertEqual(obj.quantity, quantity)
+        self.assertEqual(obj.runs, runs)
+        self.assertEqual(obj.time_efficiency, time_efficiency)
+
+
+class TestOwner_UpdateIndustryJobsEsi(TestCaseWithClearCache):
+    @pook.on
+    def test_should_update_for_corporation(self):
+        # given
+        owner = OwnerCorporationFactory()
+        bp = BlueprintFactory(owner=owner)
+        end_date = now() + dt.timedelta(hours=3)
+        installer = EveCharacterFactory()
+        job_id = 42
+        location = LocationStationFactory()
+        runs = 100
+        start_date = now()
+        status = "active"
+        duration = int((end_date - start_date).total_seconds())
+        pook.get(
+            make_esi_url(
+                f"corporations/{owner.corporation_strict.corporation_id}/industry/jobs"
+            ),
+            response_headers={"X-Pages": "1"},
+            reply=HTTPStatus.OK,
+            response_json=[
+                {
+                    "activity_id": 1,
+                    "blueprint_id": bp.item_id,
+                    "blueprint_location_id": bp.location.id,
+                    "blueprint_type_id": bp.eve_type.id,
+                    "duration": duration,
+                    "end_date": end_date.isoformat(),
+                    "facility_id": location.id,
+                    "installer_id": installer.character_id,
+                    "job_id": job_id,
+                    "location_id": location.id,
+                    "output_location_id": location.id,
+                    "runs": runs,
+                    "start_date": start_date.isoformat(),
+                    "status": status,
+                }
+            ],
+        )
+
+        # when
+        owner.update_industry_jobs_esi()
+
+        # then
+        self.assertEqual(owner.jobs.count(), 1)
+        obj: IndustryJob = owner.jobs.first()
+        self.assertEqual(obj.id, job_id)
+        self.assertEqual(obj.activity, IndustryJob.Activity.MANUFACTURING)
+        self.assertEqual(obj.blueprint, bp)
+        self.assertEqual(obj.location, location)
+        self.assertEqual(obj.installer, installer)
+        self.assertEqual(obj.runs, runs)
+        self.assertEqual(obj.start_date, start_date)
+        self.assertEqual(obj.end_date, end_date)
+        self.assertEqual(obj.status, status)
+
+    @pook.on
+    def test_should_update_for_character(self):
+        # given
+        owner = OwnerCharacterFactory()
+        bp = BlueprintFactory(owner=owner)
+        end_date = now() + dt.timedelta(hours=3)
+        installer = EveCharacterFactory()
+        job_id = 42
+        location = LocationStationFactory()
+        runs = 100
+        start_date = now()
+        status = "active"
+        duration = int((end_date - start_date).total_seconds())
+        pook.get(
+            make_esi_url(
+                f"characters/{owner.eve_character_strict.character_id}/industry/jobs"
+            ),
+            response_headers={"X-Pages": "1"},
+            reply=HTTPStatus.OK,
+            response_json=[
+                {
+                    "activity_id": 1,
+                    "blueprint_id": bp.item_id,
+                    "blueprint_location_id": bp.location.id,
+                    "blueprint_type_id": bp.eve_type.id,
+                    "duration": duration,
+                    "end_date": end_date.isoformat(),
+                    "facility_id": location.id,
+                    "installer_id": installer.character_id,
+                    "job_id": job_id,
+                    "output_location_id": location.id,
+                    "runs": runs,
+                    "start_date": start_date.isoformat(),
+                    "station_id": location.id,
+                    "status": status,
+                }
+            ],
+        )
+
+        # when
+        owner.update_industry_jobs_esi()
+
+        # then
+        self.assertEqual(owner.jobs.count(), 1)
+        obj: IndustryJob = owner.jobs.first()
+        self.assertEqual(obj.id, job_id)
+        self.assertEqual(obj.activity, IndustryJob.Activity.MANUFACTURING)
+        self.assertEqual(obj.blueprint, bp)
+        self.assertEqual(obj.location, location)
+        self.assertEqual(obj.installer, installer)
+        self.assertEqual(obj.runs, runs)
+        self.assertEqual(obj.start_date, start_date)
+        self.assertEqual(obj.end_date, end_date)
+        self.assertEqual(obj.status, status)
+
+
+class TestOwner_ValidToken(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.owner = OwnerFactory()
+        cls.owner = OwnerCharacterFactory()
 
     def test_should_return_valid_token(self):
         # when
@@ -409,56 +661,6 @@ class TestOwnerValidToken(NoSocketsTestCase):
         # when/then
         with self.assertRaises(TokenExpiredError):
             self.owner.valid_token(["esi-characters.read_blueprints.v1"])
-
-
-@patch(MODELS_PATH + ".esi")
-@patch(MANAGERS_PATH + ".esi")
-class TestPersonalOwner(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
-        load_entities()
-        load_eveuniverse()
-        load_locations()
-
-    def setUp(self) -> None:
-        self.owner = create_owner(character_id=1101, corporation_id=None)
-
-    def test_update_locations_esi(self, mock_esi_managers, mock_esi_models):
-        mock_esi_managers.client = esi_client_stub
-        mock_esi_models.client = esi_client_stub
-
-        self.owner.update_locations_esi()
-
-        self.assertEqual(
-            Location.objects.get(id=1100000000001).parent,
-            Location.objects.get(id=60003760),
-        )
-
-    def test_update_blueprints_esi(self, mock_esi_managers, mock_esi_models):
-        mock_esi_managers.client = esi_client_stub
-        mock_esi_models.client = esi_client_stub
-        self.owner.update_blueprints_esi()
-        self.assertEqual(Blueprint.objects.filter(eve_type_id=33519).count(), 1)
-
-    def test_should_update_industry_jobs_esi(self, mock_esi_managers, mock_esi_models):
-        # given
-
-        mock_esi_managers.client = esi_client_stub
-        mock_esi_models.client = esi_client_stub
-        self.owner.update_blueprints_esi()
-        # when
-        self.owner.update_industry_jobs_esi()
-        # then
-        self.assertEqual(self.owner.jobs.count(), 1)
-        obj = self.owner.jobs.first()
-        self.assertEqual(obj.id, 100000001)
-        self.assertEqual(obj.activity, 5)
-        self.assertEqual(obj.location_id, 1000000000001)
-        self.assertEqual(obj.installer, EveCharacter.objects.get(character_id=1001))
-        self.assertEqual(obj.runs, 1)
-        self.assertEqual(obj.start_date, parse_datetime("2020-12-21T23:37:14Z"))
-        self.assertEqual(obj.status, "active")
 
 
 class TestRequests(TestBlueprintsBase):

@@ -110,7 +110,7 @@ class Owner(models.Model):
         return self.character.character
 
     def update_locations_esi(self):
-        """Update locations from ESI."""
+        """Update locations of blueprint assets from ESI."""
         if self.corporation:
             token = self.valid_token(
                 [
