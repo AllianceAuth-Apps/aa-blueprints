@@ -1,6 +1,6 @@
 from app_utils.testing import NoSocketsTestCase
 
-from .factory import (
+from blueprints.tests.testdata.factory import (
     OwnerCharacterFactory,
     OwnerCorporationFactory,
     UserMainDefaultFactory,

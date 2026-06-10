@@ -13,7 +13,7 @@ from eveuniverse.tests.testdata.factories_2 import (
 from app_utils.testdata_factories import UserMainFactory
 
 from blueprints.constants import EVE_CATEGORY_ID_BLUEPRINT
-from blueprints.models import Blueprint, Location, Owner
+from blueprints.models import Blueprint, Location, Owner, Request
 
 T = TypeVar("T")
 _BASE_URL = "https://esi.evetech.net/"
@@ -139,3 +139,14 @@ class BlueprintFactory(
     quantity = 1
     runs = None
     time_efficiency = 20
+
+
+class RequestFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[Request]
+):
+    class Meta:
+        model = Request
+
+    blueprint = factory.SubFactory(BlueprintFactory)
+    requesting_user = factory.SubFactory(UserMainDefaultFactory)
+    status = Request.STATUS_OPEN

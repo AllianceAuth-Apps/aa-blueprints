@@ -3,18 +3,13 @@ from unittest.mock import patch
 from django.test import override_settings
 
 from app_utils.esi_testing import build_http_error
-from app_utils.testing import (
-    NoSocketsTestCase,
-    create_user_from_evecharacter,
-    reset_celery_once_locks,
-)
+from app_utils.testing import NoSocketsTestCase, reset_celery_once_locks
 
 from blueprints import tasks
-
-from . import create_owner
-from .testdata.load_entities import load_entities
-from .testdata.load_eveuniverse import load_eveuniverse
-from .testdata.load_locations import load_locations
+from blueprints.tests.testdata.factory import (
+    OwnerCorporationFactory,
+    UserMainDefaultFactory,
+)
 
 TASKS_PATH = "blueprints.tasks"
 
@@ -24,10 +19,7 @@ class TestTasks(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
-        load_entities()
-        load_eveuniverse()
-        load_locations()
-        cls.owner = create_owner(character_id=1101, corporation_id=2101)
+        cls.owner = OwnerCorporationFactory()
 
     @patch(TASKS_PATH + ".Owner.update_blueprints_esi")
     def test_update_all_blueprints(self, mock_update_blueprints_esi):
@@ -67,10 +59,7 @@ class TestUpdateStructures(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        load_locations()
-        cls.user, _ = create_user_from_evecharacter(1001)
+        cls.user = UserMainDefaultFactory()
         cls.token = cls.user.token_set.first()
 
     def setUp(self):
