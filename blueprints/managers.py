@@ -17,7 +17,6 @@ from eveuniverse.models import EveEntity, EveSolarSystem, EveType
 
 from allianceauth.eveonline.models import EveAllianceInfo, EveCorporationInfo
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.esi import fetch_esi_status
 
 from blueprints.app_settings import BLUEPRINTS_LOCATION_STALE_HOURS
 from blueprints.constants import EVE_TYPE_ID_SOLAR_SYSTEM
@@ -287,7 +286,6 @@ class LocationManagerBase(models.Manager):
 
     def structure_update_or_create_esi(self, id: int, token: Token) -> Tuple[Any, bool]:
         """Update or creates structure from ESI"""
-        fetch_esi_status().raise_for_status()
         try:
             structure_data = esi.client.Universe.GetUniverseStructuresStructureId(
                 structure_id=id, token=token
