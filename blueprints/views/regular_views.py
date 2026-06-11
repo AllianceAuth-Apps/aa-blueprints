@@ -272,35 +272,38 @@ def list_blueprints_ffd(request: HttpRequest) -> JsonResponse:
     """Render view for filterDropDown endpoint to enable
     server-side processing for blueprints list.
     """
-    result = {}
+    columns = request.GET.get("columns")
+    if not columns:
+        return JsonResponse({}, safe=False)
+
     blueprint_query = Blueprint.objects.user_has_access(
         request.user
     ).annotate_owner_name()
-    columns = request.GET.get("columns")
-    if columns:
-        for column in columns.split(","):
-            if column == "location":
+    result = {}
+    for column in columns.split(","):
+        match column:
+            case "location":
                 if request.user.has_perm("blueprints.view_blueprint_locations"):
                     options = blueprint_query.annotate_location_name().values_list(
                         "location_name", flat=True
                     )
                 else:
                     options = []
-            elif column == "material_efficiency":
+            case "material_efficiency":
                 options = blueprint_query.values_list("material_efficiency", flat=True)
-            elif column == "time_efficiency":
+            case "time_efficiency":
                 options = blueprint_query.values_list("time_efficiency", flat=True)
-            elif column == "owner":
+            case "owner":
                 options = blueprint_query.values_list("owner_name", flat=True)
-            elif column == "is_original":
+            case "is_original":
                 options = map(
                     lambda x: "yes" if x is None else "no",
                     blueprint_query.values_list("runs", flat=True),
                 )
-            else:
+            case _:
                 options = [f"** ERROR: Invalid column name '{column}' **"]
 
-            result[column] = sorted(list(set(options)))
+        result[column] = sorted(list(set(options)))
 
     return JsonResponse(result, safe=False)
 
