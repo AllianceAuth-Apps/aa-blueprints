@@ -61,7 +61,7 @@ $(document).ready(function () {
                 render: function (data, type, row) {
                     if (type === "display") {
                         var buttons =
-                            '<button class="btn btn-info btn-sm btn-square" data-bs-toggle="modal" data-bs-target="#modalViewRequestContainer" data-ajax_url="' +
+                            '<button class="btn btn-info btn-sm btn-square me-1" data-bs-toggle="modal" data-bs-target="#modalViewRequestContainer" data-ajax_url="' +
                             viewRequestModalUrl +
                             "?request_id=" +
                             data +
@@ -69,7 +69,7 @@ $(document).ready(function () {
                         buttons +=
                             '<form method="post" class="inline" action="' + cancelRequestUrl(data) + '">' +
                             csrfToken +
-                            '<button type="submit" class="btn btn-danger btn-sm btn-square" aria-label="' + markRequestCancelledText + '" title="' + markRequestCancelledText + '"><span class="fas fa-trash"></span></button></form>';
+                            '<button type="submit" class="btn btn-danger btn-sm btn-square me-1" aria-label="' + markRequestCancelledText + '" title="' + markRequestCancelledText + '"><span class="fas fa-trash"></span></button></form>';
                             return buttons;
                     }
 

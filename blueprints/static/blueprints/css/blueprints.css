@@ -52,4 +52,7 @@ form.inline {
   .nowrap {
       white-space: nowrap;
   }
+  #table-open-requests tbody td:nth-child(6) {
+        white-space: nowrap;
+    }
 }
