@@ -11,6 +11,27 @@ and this project adheres to [PEP-440](https://www.python.org/dev/peps/pep-0440/)
 
 This release adds support for Alliance Auth V5 and contains breaking changes.
 
+### Update notes
+
+Please update your configuraiton for the periodic tasks in your local settings file to avoid load peaks on FC's servers.
+
+The new configuration is:
+
+```python
+CELERYBEAT_SCHEDULE['blueprints_update_all_blueprints'] = {
+    'task': 'blueprints.tasks.update_all_blueprints',
+    'schedule': 10800, # 3 hours
+}
+CELERYBEAT_SCHEDULE['blueprints_update_all_industry_jobs'] = {
+    'task': 'blueprints.tasks.update_all_industry_jobs',
+    'schedule': 3600, # 1 hour
+}
+CELERYBEAT_SCHEDULE['blueprints_update_all_locations'] = {
+    'task': 'blueprints.tasks.update_all_locations',
+    'schedule': 43200, # 12 hours
+}
+```
+
 ### Changed
 
 - BREAKING CHANGE: Now requires Python 3.10+

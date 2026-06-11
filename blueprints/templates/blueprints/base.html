@@ -2,6 +2,8 @@
 
 {% load i18n %}
 
+{% block page_title %}{{ page_title|striptags }} - {% translate "Blueprint Library" %}{% endblock %}
+
 {% block header_nav_brand %}
     <a class="nav-link text-white link-light link-underline link-underline-opacity-0" href="{% url 'blueprints:index' %}">{% translate "Blueprints" %}</a>
 {% endblock %}
@@ -14,14 +16,14 @@
     {% include 'blueprints/partials/menu/administration.html' %}
 {% endblock header_nav_collapse_right %}
 
-{% block page_title %}
-    {% translate "Blueprint Library" %}
+{% block header_nav_user_character_control %}
+    {% comment %}
+        Leave empty to remove user control nav items for this app
+    {% endcomment %}
 {% endblock %}
 
 {% block content %}
-    <div class="aa-blueprints">
-        <h1 class="page-header text-center">{% translate "Blueprint Library" %}</h1>
+    {% include "framework/header/page-header.html" with title=page_title %}
 
-        {% block details %}{% endblock %}
-    </div>
+    {% block details %}{% endblock %}
 {% endblock %}
