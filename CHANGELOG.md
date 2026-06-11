@@ -7,6 +7,15 @@ and this project adheres to [PEP-440](https://www.python.org/dev/peps/pep-0440/)
 
 ## [Unreleased]
 
+## [3.0.0] - TBD
+
+### Changed
+
+- BREAKING CHANGE: Now requires Python 3.10+
+- BREAKING CHANGE: Now requires django-esi 8
+- Replace deprecated swagger client with openAPI 3.0 client in django-esi
+- Test modernization
+
 ## [2.1.1] - 2025-11-13
 
 ### Update notes

@@ -32,6 +32,7 @@ dependencies = [
     "allianceauth>=4.8,<5",
     "dj-datatables-view",
     "django-eveuniverse>=2",
+    "django-esi>=8,<10",
 ]
 
 [project.optional-dependencies]

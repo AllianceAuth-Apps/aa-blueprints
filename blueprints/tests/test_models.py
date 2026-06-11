@@ -340,7 +340,6 @@ class TestOwner_UpdateIndustryJobsEsi(TestCaseWithClearCache):
             make_esi_url(
                 f"characters/{owner.eve_character_strict.character_id}/industry/jobs"
             ),
-            response_headers={"X-Pages": "1"},
             reply=HTTPStatus.OK,
             response_json=[
                 {

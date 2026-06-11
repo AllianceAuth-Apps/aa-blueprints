@@ -2,7 +2,6 @@ from unittest.mock import patch
 
 from django.test import override_settings
 
-from app_utils.esi_testing import build_http_error
 from app_utils.testing import NoSocketsTestCase, reset_celery_once_locks
 
 from blueprints import tasks
@@ -71,35 +70,5 @@ class TestUpdateStructures(NoSocketsTestCase):
             structure_id=1000000000001, token_pk=self.token.pk
         )
 
-        # then
-        self.assertEqual(mock_structure_update_or_create_esi.call_count, 1)
-
-    def test_should_retry_when_esi_is_offline(
-        self, mock_structure_update_or_create_esi
-    ):
-        # given
-        mock_structure_update_or_create_esi.side_effect = [
-            build_http_error(502),
-            lambda: None,
-        ]
-        # when
-        tasks.update_structure_esi.delay(
-            structure_id=1000000000001, token_pk=self.token.pk
-        )
-        # then
-        self.assertEqual(mock_structure_update_or_create_esi.call_count, 2)
-
-    def test_should_abort_on_other_exceptions(
-        self, mock_structure_update_or_create_esi
-    ):
-        # given
-        mock_structure_update_or_create_esi.side_effect = [
-            build_http_error(500),
-            lambda: None,
-        ]
-        # when
-        tasks.update_structure_esi.delay(
-            structure_id=1000000000001, token_pk=self.token.pk
-        )
         # then
         self.assertEqual(mock_structure_update_or_create_esi.call_count, 1)

@@ -3,15 +3,15 @@
 # pylint: disable = missing-class-docstring
 
 import datetime as dt
+from http import HTTPStatus
 from typing import Any, Tuple
-
-from bravado.exception import HTTPForbidden, HTTPUnauthorized
 
 from django.contrib.auth.models import User
 from django.db import models
 from django.db.models import Case, Count, F, Q, Value, When
 from django.db.models.functions import Concat
 from django.utils.timezone import now
+from esi.exceptions import HTTPClientError
 from esi.models import Token
 from eveuniverse.models import EveEntity, EveSolarSystem, EveType
 
@@ -226,11 +226,11 @@ class LocationManagerBase(models.Manager):
             )
         elif self.model.is_station_id(id):
             logger.info("%s: Fetching station from ESI", id)
-            station = esi.client.Universe.get_universe_stations_station_id(
+            station = esi.client.Universe.GetUniverseStationsStationId(
                 station_id=id
-            ).results()
+            ).result()
             location, created = self._station_update_or_create_dict(
-                id=id, station=station
+                id=id, station=station.model_dump()
             )
 
         else:  # structure or random asset
@@ -291,19 +291,24 @@ class LocationManagerBase(models.Manager):
         """Update or creates structure from ESI"""
         fetch_esi_status().raise_for_status()
         try:
-            structure_data = esi.client.Universe.get_universe_structures_structure_id(
-                structure_id=id, token=token.valid_access_token()
-            ).results()
-        except (HTTPUnauthorized, HTTPForbidden) as http_error:
-            logger.warning(
-                "%s: No access to structure #%s: %s",
-                token.character_name,
-                id,
-                http_error,
-            )
-            return self.get_or_create(id=id)
+            structure_data = esi.client.Universe.GetUniverseStructuresStructureId(
+                structure_id=id, token=token
+            ).result()
+        except HTTPClientError as ex:
+            if ex.status_code in (HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN):
+                logger.warning(
+                    "%s: No access to structure #%s: %s",
+                    token.character_name,
+                    id,
+                    ex,
+                )
+                return self.get_or_create(id=id)
 
-        return self._structure_update_or_create_dict(id=id, structure=structure_data)
+            raise ex
+
+        return self._structure_update_or_create_dict(
+            id=id, structure=structure_data.model_dump()
+        )
 
     def _structure_update_or_create_dict(
         self, id: int, structure: dict
