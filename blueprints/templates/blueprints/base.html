@@ -12,25 +12,29 @@
 
 {% block header_nav_collapse_right %}
     {% if perms.blueprints.add_personal_blueprint_owner %}
-        <a class="nav-link py-0" href="{% url 'blueprints:add_personal_blueprint_owner' %}">
-            <span class="btn btn-success">{% translate "Add My Blueprints" %}</span>
-        </a>
+        <li class="nav-item">
+            <a class="btn btn-success me-2" href="{% url 'blueprints:add_personal_blueprint_owner' %}">
+                <i class="fa-solid fa-plus"></i>&nbsp;{% translate "Add My Blueprints" %}
+            </a>
+        </li>
     {% endif %}
     {% if perms.blueprints.add_corporate_blueprint_owner %}
-        <a class="nav-link py-0" href="{% url 'blueprints:add_corporate_blueprint_owner' %}">
-        <span class="btn btn-success">{% translate "Add Corporation Blueprints" %}</span>
-        </a>
+        <li class="nav-item">
+            <a class="btn btn-success me-2" href="{% url 'blueprints:add_corporate_blueprint_owner' %}">
+                <i class="fa-solid fa-plus"></i>&nbsp;{% translate "Add Corporation Blueprints" %}
+            </a>
+        </li>
     {% endif %}
 {% endblock header_nav_collapse_right %}
-
-{% block header_nav_user_character_control %}
-    {% comment %}
-        Leave empty to remove user control nav items for this app
-    {% endcomment %}
-{% endblock %}
 
 {% block content %}
     {% include "framework/header/page-header.html" with title=app_title %}
 
     {% block details %}{% endblock %}
+{% endblock %}
+
+{% block header_nav_user_character_control %}
+    {% comment %}
+        Leave empty to remove user control nav items for this app
+    {% endcomment %}
 {% endblock %}
