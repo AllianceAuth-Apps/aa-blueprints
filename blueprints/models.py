@@ -17,16 +17,14 @@ from allianceauth.eveonline.models import EveCharacter, EveCorporationInfo
 from allianceauth.notifications import notify
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.django import users_with_permission
-from app_utils.logging import LoggerAddTag
 
-from . import __title__
 from .managers import BlueprintManager, LocationManager, OwnerManager, RequestManager
 from .providers import esi
 from .validators import validate_material_efficiency, validate_time_efficiency
 
 NAMES_MAX_LENGTH = 100
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 def get_or_create_location_async(location_id: int, token: Token) -> "Location":
@@ -279,7 +277,7 @@ class Owner(models.Model):
                         )
             else:
                 blueprint_id = job["blueprint_id"]
-                logger.warning(f"Unmatchable blueprint ID: {blueprint_id}")
+                logger.warning("%s: Unmatchable blueprint ID: %d", self, blueprint_id)
 
         IndustryJob.objects.filter(pk__in=job_ids_to_remove).delete()
 

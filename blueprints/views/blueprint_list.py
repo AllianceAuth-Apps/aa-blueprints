@@ -9,13 +9,11 @@ from django.utils.translation import gettext_lazy
 from eveuniverse.models import EveType
 
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
 
-from blueprints import __title__
 from blueprints.app_settings import BLUEPRINTS_LIST_ICON_OUTPUT_SIZE
 from blueprints.models import Blueprint
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 # pylint: disable = too-many-ancestors

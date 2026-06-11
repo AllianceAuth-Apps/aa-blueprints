@@ -19,7 +19,6 @@ from allianceauth.authentication.models import CharacterOwnership
 from allianceauth.eveonline.models import EveCharacter, EveCorporationInfo
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.allianceauth import notify_admins
-from app_utils.logging import LoggerAddTag
 
 from blueprints import __title__, tasks
 from blueprints.app_settings import (
@@ -30,7 +29,7 @@ from blueprints.app_settings import (
 )
 from blueprints.models import Blueprint, Owner, Request
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 @login_required

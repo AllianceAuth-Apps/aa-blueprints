@@ -2,9 +2,9 @@
 
 from pathlib import Path
 
-from standingssync import __version__
-
 from esi.openapi_clients import ESIClientProvider
+
+from blueprints import __version__
 
 spec_file = Path(__file__).parent / "openapi_2025-12-16.json"
 

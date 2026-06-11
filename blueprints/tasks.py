@@ -7,14 +7,12 @@ from esi.models import Token
 
 from allianceauth.services.hooks import get_extension_logger
 from allianceauth.services.tasks import QueueOnce
-from app_utils.logging import LoggerAddTag
 
-from . import __title__
 from .app_settings import BLUEPRINTS_TASKS_TIME_LIMIT
 from .models import Location, Owner
 
 DEFAULT_TASK_PRIORITY = 6
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 @shared_task(time_limit=BLUEPRINTS_TASKS_TIME_LIMIT)
