@@ -3,6 +3,7 @@
 {% load i18n %}
 {% load humanize %}
 {% load sri %}
+{% load static %}
 
 {% block details %}
     <div>
@@ -37,7 +38,7 @@
 {% block extra_javascript %}
     {% include 'bundles/datatables-js-bs5.html' %}
     {% include 'bundles/datatables-css-bs5.html' %}
-    {% include "bundles/filterdropdown-js.html" %}
+    <script type="application/javascript" src="{% static 'blueprints/vendor/filterdropdown/filterDropDown.min.js' %}"></script>
     {% include "blueprints/bundles/settings.html" %}
 {% endblock %}
 
