@@ -8,8 +8,8 @@ from esi.models import Token
 from allianceauth.services.hooks import get_extension_logger
 from allianceauth.services.tasks import QueueOnce
 
-from .app_settings import BLUEPRINTS_TASKS_TIME_LIMIT
-from .models import Location, Owner
+from blueprints.app_settings import BLUEPRINTS_TASKS_TIME_LIMIT
+from blueprints.models import Location, Owner
 
 DEFAULT_TASK_PRIORITY = 6
 logger = get_extension_logger(__name__)

@@ -19,9 +19,9 @@ from allianceauth.eveonline.models import EveAllianceInfo, EveCorporationInfo
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.esi import fetch_esi_status
 
-from .app_settings import BLUEPRINTS_LOCATION_STALE_HOURS
-from .constants import EVE_TYPE_ID_SOLAR_SYSTEM
-from .providers import esi
+from blueprints.app_settings import BLUEPRINTS_LOCATION_STALE_HOURS
+from blueprints.constants import EVE_TYPE_ID_SOLAR_SYSTEM
+from blueprints.providers import esi
 
 logger = get_extension_logger(__name__)
 
@@ -87,7 +87,7 @@ class BlueprintQuerySet(models.QuerySet):
 class BlueprintManagerBase(models.Manager):
     def user_has_access(self, user: User) -> models.QuerySet:
         """Filter query to blueprints a given user has access to."""
-        from .models import Owner
+        from blueprints.models import Owner
 
         corporation_ids = set(
             user.character_ownerships.select_related("character").values_list(
@@ -274,8 +274,8 @@ class LocationManagerBase(models.Manager):
         )
 
     def _structure_update_or_create_esi_async(self, id: int, token: Token):
-        from .tasks import DEFAULT_TASK_PRIORITY
-        from .tasks import update_structure_esi as task_update_structure_esi
+        from blueprints.tasks import DEFAULT_TASK_PRIORITY
+        from blueprints.tasks import update_structure_esi as task_update_structure_esi
 
         id = int(id)
         location, created = self.get_or_create(id=id)

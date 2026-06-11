@@ -18,9 +18,14 @@ from allianceauth.notifications import notify
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.django import users_with_permission
 
-from .managers import BlueprintManager, LocationManager, OwnerManager, RequestManager
-from .providers import esi
-from .validators import validate_material_efficiency, validate_time_efficiency
+from blueprints.managers import (
+    BlueprintManager,
+    LocationManager,
+    OwnerManager,
+    RequestManager,
+)
+from blueprints.providers import esi
+from blueprints.validators import validate_material_efficiency, validate_time_efficiency
 
 NAMES_MAX_LENGTH = 100
 

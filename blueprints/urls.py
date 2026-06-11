@@ -2,8 +2,8 @@
 
 from django.urls import path
 
-from .views import regular_views
-from .views.blueprint_list import BlueprintListJson
+from blueprints.views import regular_views
+from blueprints.views.blueprint_list import BlueprintListJson
 
 app_name = "blueprints"
 

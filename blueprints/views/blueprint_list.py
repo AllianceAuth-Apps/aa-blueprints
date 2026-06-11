@@ -149,7 +149,7 @@ class BlueprintListJson(BaseDatatableView):
 # @login_required
 # @permissions_required("blueprints.basic_access")
 # def list_blueprints(request):
-#     from . import convert_blueprint
+#     from blueprints import convert_blueprint
 
 #     blueprint_rows = [
 #         convert_blueprint(blueprint, request.user) for blueprint in blueprints_query
