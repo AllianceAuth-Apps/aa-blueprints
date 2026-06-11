@@ -4,10 +4,12 @@ from typing import Any
 
 from dj_datatables_view.base_datatable_view import BaseDatatableView
 
+from django.http import HttpRequest, JsonResponse
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy
 from eveuniverse.models import EveType
 
+from allianceauth.authentication.decorators import permissions_required
 from allianceauth.services.hooks import get_extension_logger
 
 from blueprints.app_settings import BLUEPRINTS_LIST_ICON_OUTPUT_SIZE
@@ -146,13 +148,42 @@ class BlueprintListJson(BaseDatatableView):
         return super().render_column(row, column)
 
 
-# @login_required
-# @permissions_required("blueprints.basic_access")
-# def list_blueprints(request):
-#     from blueprints import convert_blueprint
+@permissions_required("blueprints.basic_access")
+def list_blueprints_ffd(request: HttpRequest) -> JsonResponse:
+    """Render view for filterDropDown endpoint to enable
+    server-side processing for blueprints list.
+    """
+    columns = request.GET.get("columns")
+    if not columns:
+        return JsonResponse({}, safe=False)
 
-#     blueprint_rows = [
-#         convert_blueprint(blueprint, request.user) for blueprint in blueprints_query
-#     ]
+    blueprint_query = Blueprint.objects.user_has_access(
+        request.user
+    ).annotate_owner_name()
+    result = {}
+    for column in columns.split(","):
+        match column:
+            case "location":
+                if request.user.has_perm("blueprints.view_blueprint_locations"):
+                    options = blueprint_query.annotate_location_name().values_list(
+                        "location_name", flat=True
+                    )
+                else:
+                    options = []
+            case "material_efficiency":
+                options = blueprint_query.values_list("material_efficiency", flat=True)
+            case "time_efficiency":
+                options = blueprint_query.values_list("time_efficiency", flat=True)
+            case "owner":
+                options = blueprint_query.values_list("owner_name", flat=True)
+            case "is_original":
+                options = map(
+                    lambda x: "yes" if x is None else "no",
+                    blueprint_query.values_list("runs", flat=True),
+                )
+            case _:
+                options = [f"** ERROR: Invalid column name '{column}' **"]
 
-#     return JsonResponse(blueprint_rows, safe=False)
+        result[column] = sorted(list(set(options)))
+
+    return JsonResponse(result, safe=False)

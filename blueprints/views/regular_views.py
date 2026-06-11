@@ -267,48 +267,6 @@ def _convert_blueprint_for_template(
 
 
 @login_required
-@permissions_required("blueprints.basic_access")
-def list_blueprints_ffd(request: HttpRequest) -> JsonResponse:
-    """Render view for filterDropDown endpoint to enable
-    server-side processing for blueprints list.
-    """
-    columns = request.GET.get("columns")
-    if not columns:
-        return JsonResponse({}, safe=False)
-
-    blueprint_query = Blueprint.objects.user_has_access(
-        request.user
-    ).annotate_owner_name()
-    result = {}
-    for column in columns.split(","):
-        match column:
-            case "location":
-                if request.user.has_perm("blueprints.view_blueprint_locations"):
-                    options = blueprint_query.annotate_location_name().values_list(
-                        "location_name", flat=True
-                    )
-                else:
-                    options = []
-            case "material_efficiency":
-                options = blueprint_query.values_list("material_efficiency", flat=True)
-            case "time_efficiency":
-                options = blueprint_query.values_list("time_efficiency", flat=True)
-            case "owner":
-                options = blueprint_query.values_list("owner_name", flat=True)
-            case "is_original":
-                options = map(
-                    lambda x: "yes" if x is None else "no",
-                    blueprint_query.values_list("runs", flat=True),
-                )
-            case _:
-                options = [f"** ERROR: Invalid column name '{column}' **"]
-
-        result[column] = sorted(list(set(options)))
-
-    return JsonResponse(result, safe=False)
-
-
-@login_required
 @permissions_required(
     "blueprints.add_personal_blueprint_owner",
     "blueprints.add_corporate_blueprint_owner",

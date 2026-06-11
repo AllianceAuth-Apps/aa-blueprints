@@ -2,8 +2,7 @@
 
 from django.urls import path
 
-from blueprints.views import regular_views
-from blueprints.views.blueprint_list import BlueprintListJson
+from blueprints.views import blueprint_list, regular_views
 
 app_name = "blueprints"
 
@@ -39,7 +38,9 @@ urlpatterns = [
         regular_views.remove_owner,
         name="remove_owner",
     ),
-    path("blueprints", BlueprintListJson.as_view(), name="list_blueprints"),
+    path(
+        "blueprints", blueprint_list.BlueprintListJson.as_view(), name="list_blueprints"
+    ),
     path("requests/user", regular_views.list_user_requests, name="list_user_requests"),
     path("requests/open", regular_views.list_open_requests, name="list_open_requests"),
     path("requests/add", regular_views.create_request, name="create_request"),
@@ -65,7 +66,7 @@ urlpatterns = [
     ),
     path(
         "list_blueprints_ffd",
-        regular_views.list_blueprints_ffd,
+        blueprint_list.list_blueprints_ffd,
         name="list_blueprints_ffd",
     ),
 ]

@@ -19,11 +19,10 @@ from blueprints.tests.testdata.factory import (
     OwnerCharacterFactory,
     OwnerCorporationFactory,
 )
-from blueprints.views.blueprint_list import BlueprintListJson
+from blueprints.views.blueprint_list import BlueprintListJson, list_blueprints_ffd
 from blueprints.views.regular_views import (
     add_corporation_blueprint_owner,
     add_personal_blueprint_owner,
-    list_blueprints_ffd,
     list_user_owners,
     remove_owner,
 )
