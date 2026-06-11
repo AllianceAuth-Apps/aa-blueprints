@@ -39,6 +39,7 @@ CELERYBEAT_SCHEDULE['blueprints_update_all_locations'] = {
 - Added support for AA 5
 - Replace deprecated swagger client with openAPI 3.0 client in django-esi
 - Now uses pinned ESI version
+- Restored original menu layout
 - Removed logger tag
 - Test modernization
 - Refactoring

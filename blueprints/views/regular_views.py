@@ -41,7 +41,7 @@ def index(request: HttpRequest):
     else:
         request_count = None
     context = {
-        "page_title": _(__title__),
+        "app_title": _(__title__),
         "data_tables_page_length": BLUEPRINTS_DEFAULT_PAGE_LENGTH,
         "data_tables_paging": BLUEPRINTS_PAGING_ENABLED,
         "request_count": request_count,
