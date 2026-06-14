@@ -11,3 +11,5 @@ build/
 coverage.xml
 .tox
 htmlcov/
+.env
+.temp/

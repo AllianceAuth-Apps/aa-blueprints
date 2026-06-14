@@ -2,26 +2,39 @@
 
 {% load i18n %}
 
-{% block header_nav_brand %}
-    <a class="nav-link text-white link-light link-underline link-underline-opacity-0" href="{% url 'blueprints:index' %}">{% translate "Blueprints" %}</a>
-{% endblock %}
+{% block page_title %}{{ app_title|striptags }} - {{ app_title }}{% endblock %}
 
-{% block header_nav_collapse_left %}
-    {% include 'blueprints/partials/menu/navigation.html' %}
-{% endblock header_nav_collapse_left %}
+{% block header_nav_brand %}
+    <a class="nav-link text-white link-light link-underline link-underline-opacity-0" href="{% url 'blueprints:index' %}">
+        {{ app_title }}
+    </a>
+{% endblock %}
 
 {% block header_nav_collapse_right %}
-    {% include 'blueprints/partials/menu/administration.html' %}
+    {% if perms.blueprints.add_personal_blueprint_owner %}
+        <li class="nav-item">
+            <a class="btn btn-success me-2" href="{% url 'blueprints:add_personal_blueprint_owner' %}">
+                <i class="fa-solid fa-plus"></i>&nbsp;{% translate "Add My Blueprints" %}
+            </a>
+        </li>
+    {% endif %}
+    {% if perms.blueprints.add_corporate_blueprint_owner %}
+        <li class="nav-item">
+            <a class="btn btn-success me-2" href="{% url 'blueprints:add_corporate_blueprint_owner' %}">
+                <i class="fa-solid fa-plus"></i>&nbsp;{% translate "Add Corporation Blueprints" %}
+            </a>
+        </li>
+    {% endif %}
 {% endblock header_nav_collapse_right %}
 
-{% block page_title %}
-    {% translate "Blueprint Library" %}
+{% block content %}
+    {% include "framework/header/page-header.html" with title=app_title %}
+
+    {% block details %}{% endblock %}
 {% endblock %}
 
-{% block content %}
-    <div class="aa-blueprints">
-        <h1 class="page-header text-center">{% translate "Blueprint Library" %}</h1>
-
-        {% block details %}{% endblock %}
-    </div>
+{% block header_nav_user_character_control %}
+    {% comment %}
+        Leave empty to remove user control nav items for this app
+    {% endcomment %}
 {% endblock %}

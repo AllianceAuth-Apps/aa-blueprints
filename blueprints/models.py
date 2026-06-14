@@ -1,5 +1,7 @@
 """Models for Blueprints."""
 
+from typing import List
+
 from django.contrib.auth.models import Permission, User
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
@@ -15,16 +17,19 @@ from allianceauth.eveonline.models import EveCharacter, EveCorporationInfo
 from allianceauth.notifications import notify
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.django import users_with_permission
-from app_utils.logging import LoggerAddTag
 
-from . import __title__
-from .managers import BlueprintManager, LocationManager, OwnerManager, RequestManager
-from .providers import esi
-from .validators import validate_material_efficiency, validate_time_efficiency
+from blueprints.managers import (
+    BlueprintManager,
+    LocationManager,
+    OwnerManager,
+    RequestManager,
+)
+from blueprints.providers import esi
+from blueprints.validators import validate_material_efficiency, validate_time_efficiency
 
 NAMES_MAX_LENGTH = 100
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 def get_or_create_location_async(location_id: int, token: Token) -> "Location":
@@ -110,7 +115,7 @@ class Owner(models.Model):
         return self.character.character
 
     def update_locations_esi(self):
-        """Update locations from ESI."""
+        """Update locations of blueprint assets from ESI."""
         if self.corporation:
             token = self.valid_token(
                 [
@@ -277,49 +282,51 @@ class Owner(models.Model):
                         )
             else:
                 blueprint_id = job["blueprint_id"]
-                logger.warning(f"Unmatchable blueprint ID: {blueprint_id}")
+                logger.warning("%s: Unmatchable blueprint ID: %d", self, blueprint_id)
 
         IndustryJob.objects.filter(pk__in=job_ids_to_remove).delete()
 
-    def _fetch_corporate_assets(self, token) -> list:
-        return esi.client.Assets.get_corporations_corporation_id_assets(
+    def _fetch_corporate_assets(self, token: Token) -> List[dict]:
+        objs = esi.client.Assets.GetCorporationsCorporationIdAssets(
             corporation_id=self.corporation_strict.corporation_id,
-            token=token.valid_access_token(),
+            token=token,
         ).results()
+        return [o.model_dump() for o in objs]
 
-    def _fetch_personal_assets(self, token) -> list:
-        return esi.client.Assets.get_characters_character_id_assets(
+    def _fetch_personal_assets(self, token: Token) -> List[dict]:
+        objs = esi.client.Assets.GetCharactersCharacterIdAssets(
             character_id=self.eve_character_strict.character_id,
-            token=token.valid_access_token(),
+            token=token,
         ).results()
+        return [o.model_dump() for o in objs]
 
     def _fetch_corporate_blueprints(self, token: Token) -> list:
-        blueprints = esi.client.Corporation.get_corporations_corporation_id_blueprints(
+        objs = esi.client.Corporation.GetCorporationsCorporationIdBlueprints(
             corporation_id=self.corporation_strict.corporation_id,
-            token=token.valid_access_token(),
+            token=token,
         ).results()
-        return blueprints
+        return [o.model_dump() for o in objs]
 
     def _fetch_personal_blueprints(self, token: Token) -> list:
-        blueprints = esi.client.Character.get_characters_character_id_blueprints(
+        objs = esi.client.Character.GetCharactersCharacterIdBlueprints(
             character_id=self.eve_character_strict.character_id,
-            token=token.valid_access_token(),
+            token=token,
         ).results()
-        return blueprints
+        return [o.model_dump() for o in objs]
 
     def _fetch_corporate_industry_jobs(self, token: Token) -> list:
-        jobs = esi.client.Industry.get_corporations_corporation_id_industry_jobs(
+        objs = esi.client.Industry.GetCorporationsCorporationIdIndustryJobs(
             corporation_id=self.corporation_strict.corporation_id,
-            token=token.valid_access_token(),
+            token=token,
         ).results()
-        return jobs
+        return [o.model_dump() for o in objs]
 
     def _fetch_personal_industry_jobs(self, token: Token) -> list:
-        jobs = esi.client.Industry.get_characters_character_id_industry_jobs(
+        objs = esi.client.Industry.GetCharactersCharacterIdIndustryJobs(
             character_id=self.eve_character_strict.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        return jobs
+            token=token,
+        ).result()
+        return [o.model_dump() for o in objs]
 
     def valid_token(self, scopes) -> Token:
         """Return a valid token for the owner or raise exception."""
