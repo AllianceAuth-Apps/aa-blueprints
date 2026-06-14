@@ -7,13 +7,13 @@ and this project adheres to [PEP-440](https://www.python.org/dev/peps/pep-0440/)
 
 ## [Unreleased]
 
-## [3.0.0] - TBD
+## [3.0.0b1] - 2026-06-14
 
 This release adds support for Alliance Auth V5 and contains breaking changes.
 
 ### Update notes
 
-Please update your configuraiton for the periodic tasks in your local settings file to avoid load peaks on FC's servers.
+Please update your configuration for the periodic tasks in your local settings file to avoid load peaks on FC's servers.
 
 The new configuration is:
 
