@@ -76,7 +76,7 @@ $(document).ready(function () {
 
                         if (row.status === "OP") {
                             buttons +=
-                                '<button class="btn btn-info btn-sm btn-square" data-bs-toggle="modal" data-bs-target="#modalViewRequestContainer" data-ajax_url="' +
+                                '<button class="btn btn-info btn-sm btn-square me-1" data-bs-toggle="modal" data-bs-target="#modalViewRequestContainer" data-ajax_url="' +
                                 viewRequestModalUrl +
                                 "?request_id=" +
                                 data +
@@ -84,15 +84,15 @@ $(document).ready(function () {
                             buttons +=
                                 '<form class="inline" method="post" action="' + cancelRequestUrl(data) + '">' +
                                 csrfToken +
-                                '<button type="submit" class="btn btn-danger btn-sm btn-square" aria-label="' + markRequestCancelledText + '" title="' + markRequestCancelledText + '"><span class="fas fa-trash"></span></button></form>';
+                                '<button type="submit" class="btn btn-danger btn-sm btn-square me-1" aria-label="' + markRequestCancelledText + '" title="' + markRequestCancelledText + '"><span class="fas fa-trash"></span></button></form>';
                             buttons +=
                                 '<form class="inline" method="post" action="' + inProgressRequestUrl(data) + '">' +
                                 csrfToken +
-                                '<button type="submit" class="btn btn-primary btn-sm btn-square" aria-label="' + markRequestInProgressText + '" title="' + markRequestInProgressText + '"><span class="fas fa-clipboard-check"></span></button></form>';
+                                '<button type="submit" class="btn btn-primary btn-sm btn-square me-1" aria-label="' + markRequestInProgressText + '" title="' + markRequestInProgressText + '"><span class="fas fa-clipboard-check"></span></button></form>';
                             return buttons;
                         } else if (row.status === "IP") {
                             buttons +=
-                                '<button class="btn btn-info btn-sm btn-square" data-bs-toggle="modal" data-bs-target="#modalViewRequestContainer" data-ajax_url="' +
+                                '<button class="btn btn-info btn-sm btn-square me-1" data-bs-toggle="modal" data-bs-target="#modalViewRequestContainer" data-ajax_url="' +
                                 viewRequestModalUrl +
                                 "?request_id=" +
                                 data +
@@ -100,15 +100,15 @@ $(document).ready(function () {
                             buttons +=
                                 '<form class="inline" method="post" action="' + openRequestUrl(data) + '">' +
                                 csrfToken +
-                                '<button type="submit" class="btn btn-warning btn-sm btn-square" aria-label="' + markRequestOpenText + '" title="' + markRequestOpenText + '"><span class="fas fa-undo"></span></button></form>';
+                                '<button type="submit" class="btn btn-warning btn-sm btn-square me-1" aria-label="' + markRequestOpenText + '" title="' + markRequestOpenText + '"><span class="fas fa-undo"></span></button></form>';
                             buttons +=
                                 '<form class="inline" method="post" action="' + cancelRequestUrl(data) + '">' +
                                 csrfToken +
-                                '<button type="submit" class="btn btn-danger btn-sm btn-square" aria-label="' + markRequestCancelledText + '" title="' + markRequestCancelledText + '"><span class="fas fa-trash"></span></button></form>';
+                                '<button type="submit" class="btn btn-danger btn-sm btn-square me-1" aria-label="' + markRequestCancelledText + '" title="' + markRequestCancelledText + '"><span class="fas fa-trash"></span></button></form>';
                             buttons +=
                                 '<form class="inline" method="post" action="' +fulfillRequestUrl(data) +'">' +
                                 csrfToken +
-                                '<button type="submit" class="btn btn-success btn-sm btn-square"  aria-label="' + markRequestFulfilledText + '" title="' + markRequestFulfilledText + '"><span class="fas fa-clipboard-check"></span></button></form>';
+                                '<button type="submit" class="btn btn-success btn-sm btn-square me-1"  aria-label="' + markRequestFulfilledText + '" title="' + markRequestFulfilledText + '"><span class="fas fa-clipboard-check"></span></button></form>';
                             return buttons;
                         } else {
                             return "";

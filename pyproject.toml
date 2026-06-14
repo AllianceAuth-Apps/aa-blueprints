@@ -16,6 +16,7 @@ classifiers = [
     "Environment :: Web Environment",
     "Framework :: Django",
     "Framework :: Django :: 4.2",
+    "Framework :: Django :: 5.2",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Operating System :: OS Independent",
@@ -28,11 +29,15 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
 ]
 dependencies = [
-    "allianceauth-app-utils>=1.28",
-    "allianceauth>=4.8,<5",
+    "allianceauth-app-utils>=1.32",
+    "allianceauth>=4.8,<6",
     "dj-datatables-view",
-    "django-eveuniverse>=1.6",
+    "django-eveuniverse>=2",
+    "django-esi>=8,<10",
 ]
+
+[project.optional-dependencies]
+test = ["coverage", "factory_boy", "pook"]
 
 [project.urls]
 Homepage = "https://gitlab.com/eclipse-expeditions/aa-blueprints"

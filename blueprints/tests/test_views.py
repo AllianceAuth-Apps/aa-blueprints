@@ -3,28 +3,30 @@ from unittest.mock import Mock, patch
 from django.contrib.sessions.middleware import SessionMiddleware
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
-from eveuniverse.models import EveEntity, EveType
 
-from allianceauth.eveonline.models import EveCorporationInfo
-from allianceauth.tests.auth_utils import AuthUtils
-from app_utils.testing import create_user_from_evecharacter, json_response_to_python
+from app_utils.testdata_factories import (
+    EveCharacterFactory,
+    EveCorporationInfoFactory,
+    UserMainFactory,
+)
+from app_utils.testing import NoSocketsTestCase, json_response_to_python
 
-from blueprints.models import Blueprint, Location, Owner, Request
-from blueprints.views.blueprint_list import BlueprintListJson
+from blueprints.models import Owner, Request
+from blueprints.tests.testdata.factory import (
+    BlueprintFactory,
+    FrigateBlueprintTypeFactory,
+    LocationStationFactory,
+    OwnerCharacterFactory,
+    OwnerCorporationFactory,
+)
+from blueprints.views.blueprint_list import BlueprintListJson, list_blueprints_ffd
 from blueprints.views.regular_views import (
     add_corporation_blueprint_owner,
     add_personal_blueprint_owner,
-    list_blueprints_ffd,
     list_user_owners,
     remove_owner,
 )
 
-from . import create_owner
-from .testdata.load_entities import load_entities
-from .testdata.load_eveuniverse import load_eveuniverse
-from .testdata.load_locations import load_locations
-
-MODELS_PATH = "blueprints.models"
 VIEWS_PATH = "blueprints.views.regular_views"
 
 
@@ -32,45 +34,34 @@ def notification_count(user) -> int:
     return user.notification_set.filter(viewed=False).count()
 
 
-class _TestCaseWithTestData(TestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        load_locations()
-        cls.owner = create_owner(character_id=1101, corporation_id=2101)
-        cls.user_owner = cls.owner.character.user
-        cls.corporation_2001 = EveEntity.objects.get(id=2101)
-        cls.jita_44 = Location.objects.get(id=60003760)
-        cls.blueprint = Blueprint.objects.create(
-            location=cls.jita_44,
-            eve_type=EveType.objects.get(id=33519),
-            owner=cls.owner,
-            runs=None,
-            quantity=1,
-            location_flag="AssetSafety",
-            material_efficiency=0,
-            time_efficiency=0,
-            item_id=1,
-        )
-        cls.user_requestor, _ = create_user_from_evecharacter(
-            1102,
-            permissions=["blueprints.basic_access", "blueprints.request_blueprints"],
-        )
-        cls.user_other_approver, _ = create_user_from_evecharacter(
-            1103,
-            permissions=["blueprints.basic_access", "blueprints.manage_requests"],
-        )
-
-
-class TestBlueprintsData(_TestCaseWithTestData):
+class TestBlueprintsData(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
         cls.factory = RequestFactory()
-        cls.user_owner = AuthUtils.add_permission_to_user_by_name(
-            "blueprints.view_blueprint_locations", cls.user_owner
+        cls.user_owner = UserMainFactory(
+            main_character__character=EveCharacterFactory(
+                corporation__corporation_name="Lexcorp"
+            ),
+            permissions__=[
+                "blueprints.basic_access",
+                "blueprints.add_corporate_blueprint_owner",
+                "blueprints.add_personal_blueprint_owner",
+                "blueprints.add_corporate_blueprint_owner",
+                "blueprints.view_blueprint_locations",
+            ],
+        )
+        cls.owner = OwnerCorporationFactory(user=cls.user_owner)
+        cls.jita_44 = LocationStationFactory(
+            id=60003760, name="Jita IV - Moon 4 - Caldari Navy Assembly Plant"
+        )
+        cls.blueprint = BlueprintFactory(
+            location=cls.jita_44,
+            eve_type=FrigateBlueprintTypeFactory(name="Mobile Tractor Unit Blueprint"),
+            owner=cls.owner,
+            runs=None,
+            quantity=1,
+            item_id=1,
         )
 
     def test_blueprints_data(self):
@@ -126,8 +117,8 @@ class TestBlueprintsData(_TestCaseWithTestData):
 
     def test_should_handle_owner_without_character(self):
         # given
-        Owner.objects.create(
-            corporation=EveCorporationInfo.objects.get(corporation_id=2001)
+        OwnerCorporationFactory(
+            user=None, character=None, corporation=EveCorporationInfoFactory()
         )  # owner without character
         request = self.factory.get(reverse("blueprints:list_blueprints"))
         request.user = self.user_owner
@@ -161,44 +152,56 @@ class TestListBlueprintsFdd(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        load_locations()
         cls.factory = RequestFactory()
-        cls.owner_1001 = create_owner(character_id=1001, corporation_id=None)
-        cls.owner_1001.character.user = AuthUtils.add_permission_to_user_by_name(
-            "blueprints.view_blueprint_locations", cls.owner_1001.character.user
-        )
-        cls.owner_1002 = create_owner(character_id=1002, corporation_id=2001)
 
     def test_should_return_list_of_options(self):
         # given
-        Blueprint.objects.create(
-            location=Location.objects.get(id=60003760),
-            eve_type=EveType.objects.get(id=33519),
-            owner=self.owner_1001,
+        corporation = EveCorporationInfoFactory(corporation_name="Wayne Technologies")
+        user_1001 = UserMainFactory(
+            main_character__character=EveCharacterFactory(
+                character_name="Bruce Wayne", corporation=corporation
+            ),
+            permissions__=[
+                "blueprints.basic_access",
+                "blueprints.add_personal_blueprint_owner",
+                "blueprints.view_blueprint_locations",
+            ],
+        )
+        owner_1001 = OwnerCharacterFactory(user=user_1001)
+        user_1002 = UserMainFactory(
+            main_character__character=EveCharacterFactory(corporation=corporation),
+            permissions__=[
+                "blueprints.basic_access",
+                "blueprints.add_personal_blueprint_owner",
+                "blueprints.view_blueprint_locations",
+            ],
+        )
+        owner_1002 = OwnerCorporationFactory(user=user_1002)
+        BlueprintFactory(
+            location=LocationStationFactory(
+                name="Jita IV - Moon 4 - Caldari Navy Assembly Plant"
+            ),
+            owner=owner_1001,
             runs=10,
-            location_flag="AssetSafety",
             material_efficiency=10,
             time_efficiency=30,
-            item_id=1,
         )
-        Blueprint.objects.create(
-            location=Location.objects.get(id=1000000000001),
-            eve_type=EveType.objects.get(id=33519),
-            owner=self.owner_1002,
-            location_flag="AssetSafety",
+        BlueprintFactory(
+            location=LocationStationFactory(name="Amamake - Test Structure Alpha"),
+            owner=owner_1002,
+            runs=None,
             material_efficiency=20,
             time_efficiency=40,
-            item_id=2,
         )
         request = self.factory.get(
             reverse("blueprints:list_blueprints_ffd")
             + "?columns=location,owner,material_efficiency,time_efficiency,is_original"
         )
-        request.user = self.owner_1001.character.user
+        request.user = user_1001
+
         # when
         response = list_blueprints_ffd(request)
+
         # then
         self.assertEqual(response.status_code, 200)
         data = json_response_to_python(response)
@@ -217,10 +220,27 @@ class TestListBlueprintsFdd(TestCase):
         )
 
 
-class TestRequestWorkflow(_TestCaseWithTestData):
+class TestRequestWorkflow(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
+        cls.user_owner = UserMainFactory(
+            permissions__=[
+                "blueprints.basic_access",
+                "blueprints.add_corporate_blueprint_owner",
+                "blueprints.add_personal_blueprint_owner",
+                "blueprints.add_corporate_blueprint_owner",
+                "blueprints.manage_requests",
+            ],
+        )
+        cls.owner = OwnerCorporationFactory(user=cls.user_owner)
+        cls.blueprint = BlueprintFactory(owner=cls.owner, runs=None)
+        cls.user_requestor = UserMainFactory(
+            permissions__=["blueprints.basic_access", "blueprints.request_blueprints"],
+        )
+        cls.user_other_approver = UserMainFactory(
+            permissions__=["blueprints.basic_access", "blueprints.manage_requests"],
+        )
 
     @patch(VIEWS_PATH + ".messages")
     def test_should_create_new_request(self, mock_messages):
@@ -353,10 +373,40 @@ class TestRequestWorkflow(_TestCaseWithTestData):
         self.assertEqual(notification_count(self.user_other_approver), 1)
 
 
-class TestOtherViews(_TestCaseWithTestData):
+class TestOtherViews(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
+        cls.user_owner = UserMainFactory(
+            main_character__character=EveCharacterFactory(
+                corporation__corporation_name="Lexcorp"
+            ),
+            permissions__=[
+                "blueprints.basic_access",
+                "blueprints.add_corporate_blueprint_owner",
+                "blueprints.add_personal_blueprint_owner",
+                "blueprints.add_corporate_blueprint_owner",
+                "blueprints.manage_requests",
+            ],
+        )
+        cls.owner = OwnerCorporationFactory(user=cls.user_owner)
+        cls.jita_44 = LocationStationFactory(
+            id=60003760, name="Jita IV - Moon 4 - Caldari Navy Assembly Plant"
+        )
+        cls.blueprint = BlueprintFactory(
+            location=cls.jita_44,
+            eve_type=FrigateBlueprintTypeFactory(name="Mobile Tractor Unit Blueprint"),
+            owner=cls.owner,
+            runs=None,
+            quantity=1,
+            item_id=1,
+        )
+        cls.user_requestor = UserMainFactory(
+            permissions__=["blueprints.basic_access", "blueprints.request_blueprints"],
+        )
+        cls.user_other_approver = UserMainFactory(
+            permissions__=["blueprints.basic_access", "blueprints.manage_requests"],
+        )
 
     def test_can_open_index_by_requestor(self):
         # given
@@ -410,12 +460,8 @@ class TestAddCorporationBlueprintOwner(TestCase):
     def setUpClass(cls) -> None:
         super().setUpClass()
         cls.factory = RequestFactory()
-        load_eveuniverse()
-        load_entities()
-        load_locations()
-        cls.user, _ = create_user_from_evecharacter(
-            1001,
-            permissions=[
+        cls.user = UserMainFactory(
+            permissions__=[
                 "blueprints.basic_access",
                 "blueprints.add_corporate_blueprint_owner",
             ],
@@ -492,12 +538,8 @@ class TestAddPersonalBlueprintOwner(TestCase):
     def setUpClass(cls) -> None:
         super().setUpClass()
         cls.factory = RequestFactory()
-        load_eveuniverse()
-        load_entities()
-        load_locations()
-        cls.user, _ = create_user_from_evecharacter(
-            1001,
-            permissions=[
+        cls.user = UserMainFactory(
+            permissions__=[
                 "blueprints.basic_access",
                 "blueprints.add_personal_blueprint_owner",
             ],

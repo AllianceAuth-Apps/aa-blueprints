@@ -11,8 +11,8 @@ from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 
-from . import tasks
-from .models import Blueprint, IndustryJob, Location, Owner, Request
+from blueprints import tasks
+from blueprints.models import Blueprint, IndustryJob, Location, Owner, Request
 
 
 class LocationNameListFilter(admin.SimpleListFilter):
