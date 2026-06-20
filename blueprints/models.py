@@ -290,42 +290,42 @@ class Owner(models.Model):
         objs = esi.client.Assets.GetCorporationsCorporationIdAssets(
             corporation_id=self.corporation_strict.corporation_id,
             token=token,
-        ).results()
+        ).results(use_etag=False)
         return [o.model_dump() for o in objs]
 
     def _fetch_personal_assets(self, token: Token) -> List[dict]:
         objs = esi.client.Assets.GetCharactersCharacterIdAssets(
             character_id=self.eve_character_strict.character_id,
             token=token,
-        ).results()
+        ).results(use_etag=False)
         return [o.model_dump() for o in objs]
 
     def _fetch_corporate_blueprints(self, token: Token) -> list:
         objs = esi.client.Corporation.GetCorporationsCorporationIdBlueprints(
             corporation_id=self.corporation_strict.corporation_id,
             token=token,
-        ).results()
+        ).results(use_etag=False)
         return [o.model_dump() for o in objs]
 
     def _fetch_personal_blueprints(self, token: Token) -> list:
         objs = esi.client.Character.GetCharactersCharacterIdBlueprints(
             character_id=self.eve_character_strict.character_id,
             token=token,
-        ).results()
+        ).results(use_etag=False)
         return [o.model_dump() for o in objs]
 
     def _fetch_corporate_industry_jobs(self, token: Token) -> list:
         objs = esi.client.Industry.GetCorporationsCorporationIdIndustryJobs(
             corporation_id=self.corporation_strict.corporation_id,
             token=token,
-        ).results()
+        ).results(use_etag=False)
         return [o.model_dump() for o in objs]
 
     def _fetch_personal_industry_jobs(self, token: Token) -> list:
         objs = esi.client.Industry.GetCharactersCharacterIdIndustryJobs(
             character_id=self.eve_character_strict.character_id,
             token=token,
-        ).result()
+        ).result(use_etag=False)
         return [o.model_dump() for o in objs]
 
     def valid_token(self, scopes) -> Token:
