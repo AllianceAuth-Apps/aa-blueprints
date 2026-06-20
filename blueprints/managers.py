@@ -225,7 +225,7 @@ class LocationManagerBase(models.Manager):
             logger.info("%s: Fetching station from ESI", id)
             station = esi.client.Universe.GetUniverseStationsStationId(
                 station_id=id
-            ).result()
+            ).result(use_etag=False)
             location, created = self._station_update_or_create_dict(
                 id=id, station=station.model_dump()
             )
@@ -289,7 +289,7 @@ class LocationManagerBase(models.Manager):
         try:
             structure_data = esi.client.Universe.GetUniverseStructuresStructureId(
                 structure_id=id, token=token
-            ).result()
+            ).result(use_etag=False)
         except HTTPClientError as ex:
             if ex.status_code in (HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN):
                 logger.warning(
