@@ -7,6 +7,12 @@ and this project adheres to [PEP-440](https://www.python.org/dev/peps/pep-0440/)
 
 ## [Unreleased]
 
+## [3.0.0b2] - 2026-06-20
+
+### Fixed
+
+- ESI operations are occasionally aborting with `HTTPNotModified` exceptions
+
 ## [3.0.0b1] - 2026-06-14
 
 This release adds support for Alliance Auth V5 and contains breaking changes.
