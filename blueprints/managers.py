@@ -105,6 +105,12 @@ class BlueprintManagerBase(models.Manager):
                 ).values_list("corporation_id", flat=True)
             )
 
+        # If user should see all blueprints add all corporation IDs to the corporations list
+        if user.has_perm("blueprints.view_all_blueprints"):
+            corporation_ids = corporation_ids | set(
+                EveCorporationInfo.objects.values_list("corporation_id", flat=True)
+            )
+
         personal_owner_ids = [
             owner.pk
             for owner in Owner.objects.filter(
