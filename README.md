@@ -1,13 +1,16 @@
 # AA Blueprints
 
-This is an blueprints library app for [Alliance Auth](https://gitlab.com/allianceauth/allianceauth) (AA) that can be used to list blueprints for your corporation or alliance.
+An app for listing blueprints and managing member usage in an organization with Alliance Auth.
 
-![release](https://img.shields.io/pypi/v/aa-blueprints?label=release)
-![License](https://img.shields.io/badge/license-GPL-green)
-![python](https://img.shields.io/pypi/pyversions/aa-blueprints)
-![django](https://img.shields.io/pypi/djversions/aa-blueprints?label=django)
-![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)
-![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)
+[![release](https://img.shields.io/pypi/v/aa-blueprints?label=release)](https://pypi.org/project/aa-blueprints/)
+[![python](https://img.shields.io/pypi/pyversions/aa-blueprints)](https://pypi.org/project/aa-blueprints/)
+[![django](https://img.shields.io/pypi/djversions/aa-blueprints?label=django)](https://pypi.org/project/aa-blueprints/)
+[![CI/CD Pipeline](https://github.com/AllianceAuth-Apps/aa-blueprints/actions/workflows/ci-cd.yaml/badge.svg)](https://github.com/AllianceAuth-Apps/aa-blueprints/actions/workflows/ci-cd.yaml)
+[![codecov](https://codecov.io/github/AllianceAuth-Apps/aa-blueprints/graph/badge.svg?token=oqzLcXHOmT)](https://codecov.io/github/AllianceAuth-Apps/aa-blueprints)
+[![license](https://img.shields.io/badge/license-GPLv3-green)](https://github.com/AllianceAuth-Apps/aa-blueprints#GPL-3.0-1-ov-file)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![chat](https://img.shields.io/discord/790364535294132234)](https://discord.gg/zmh52wnfvM)
 
 ## Overview
 
@@ -16,7 +19,8 @@ This is an blueprints library app for [Alliance Auth](https://gitlab.com/allianc
 - Lists all blueprints owned by corporation or alliance (configurable with permissions)
 - Manage user requests for making copies of blueprints
 
->**Hint**<br>Blueprints sends Auth notifications to inform users about blueprint requests. If you like to get those as direct messages on Discord please consider also installing [Discord Notify](https://gitlab.com/ErikKalkoken/aa-discordnotify).
+>[!TIP]
+> Blueprints sends Auth notifications to inform users about blueprint requests. If you like to get those as direct messages on Discord please consider also installing [Discord Notify](https://gitlab.com/ErikKalkoken/aa-discordnotify).
 
 ## Screenshots
 
