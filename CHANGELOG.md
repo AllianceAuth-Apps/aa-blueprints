@@ -1,11 +1,18 @@
 # Changelog
 
+> [!WARNING]
+> This file has been decommissioned. Changes are now documented on the GitHub releases page.
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP-440](https://www.python.org/dev/peps/pep-0440/).
 
-## [Unreleased]
+## [3.0.1] - 2026-07-13
+
+### Changed
+
+- Migrated the repository to GitHub: [aa-blueprints](https://github.com/AllianceAuth-Apps/aa-blueprints)
 
 ## [3.0.0] - 2026-06-22
 
