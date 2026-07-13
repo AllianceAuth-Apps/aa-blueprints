@@ -70,14 +70,12 @@ def add_corporation_blueprint_owner(request: HttpRequest, token: Token):
     except CharacterOwnership.DoesNotExist:
         messages.error(
             request,
-            format_html(
-                _(
-                    "You can only use your main or alt characters "
-                    "to add corporations. "
-                    "However, character %s is neither. "
-                )
-                % format_html("<strong>{}</strong>", token_char.character_name)
-            ),
+            _(
+                "You can only use your main or alt characters "
+                "to add corporations. "
+                "However, character %s is neither. "
+            )
+            % token_char.character_name,
         )
         success = False
         owned_char = None
@@ -101,20 +99,16 @@ def add_corporation_blueprint_owner(request: HttpRequest, token: Token):
         tasks.update_locations_for_owner.delay(owner_pk=owner.pk)
         messages.info(
             request,
-            format_html(
-                _(
-                    "%(corporation)s has been added with %(character)s "
-                    "as sync character. We have started fetching blueprints "
-                    "for this corporation. You will receive a report once "
-                    "the process is finished."
-                )
-                % {
-                    "corporation": format_html("<strong>{}</strong>", owner),
-                    "character": format_html(
-                        "<strong>{}</strong>", owner.eve_character_strict.character_name
-                    ),
-                }
-            ),
+            _(
+                "%(corporation)s has been added with %(character)s "
+                "as sync character. We have started fetching blueprints "
+                "for this corporation. You will receive a report once "
+                "the process is finished."
+            )
+            % {
+                "corporation": owner,
+                "character": owner.eve_character_strict.character_name,
+            },
         )
         if BLUEPRINTS_ADMIN_NOTIFICATIONS_ENABLED:
             corporation_name = owner.corporation_strict.corporation_name
@@ -149,14 +143,12 @@ def add_personal_blueprint_owner(request: HttpRequest, token: Token):
     except CharacterOwnership.DoesNotExist:
         messages.error(
             request,
-            format_html(
-                _(
-                    "You can only use your main or alt characters "
-                    "to add corporations. "
-                    "However, character %s is neither. "
-                )
-                % format_html("<strong>{}</strong>", token_char.character_name)
-            ),
+            _(
+                "You can only use your main or alt characters "
+                "to add corporations. "
+                "However, character %s is neither. "
+            )
+            % token_char.character_name,
         )
         success = False
         owned_char = None
@@ -171,18 +163,14 @@ def add_personal_blueprint_owner(request: HttpRequest, token: Token):
         tasks.update_locations_for_owner.delay(owner_pk=owner.pk)
         messages.info(
             request,
-            format_html(
-                _(
-                    "%(character)s has been added. We have started fetching blueprints "
-                    "for this character. You will receive a report once "
-                    "the process is finished."
-                )
-                % {
-                    "character": format_html(
-                        "<strong>{}</strong>", owner.eve_character_strict.character_name
-                    ),
-                }
-            ),
+            _(
+                "%(character)s has been added. We have started fetching blueprints "
+                "for this character. You will receive a report once "
+                "the process is finished."
+            )
+            % {
+                "character": owner.eve_character_strict.character_name,
+            },
         )
         if BLUEPRINTS_ADMIN_NOTIFICATIONS_ENABLED:
             notify_admins(
@@ -338,10 +326,8 @@ def create_request(request: HttpRequest):
         user_request.notify_new_request()
         messages.info(
             request,
-            format_html(
-                _("A copy of %(blueprint)s has been requested.")
-                % {"blueprint": requested.eve_type.name}
-            ),
+            _("A copy of %(blueprint)s has been requested.")
+            % {"blueprint": requested.eve_type.name},
         )
     return redirect("blueprints:index")
 
@@ -429,18 +415,14 @@ def mark_request_fulfilled(request: HttpRequest, request_id: int):
         user_request.notify_request_fulfilled()
         messages.info(
             request,
-            format_html(
-                _("The request for %(blueprint)s has been closed as fulfilled.")
-                % {"blueprint": user_request.blueprint.eve_type.name}
-            ),
+            _("The request for %(blueprint)s has been closed as fulfilled.")
+            % {"blueprint": user_request.blueprint.eve_type.name},
         )
     else:
         messages.error(
             request,
-            format_html(
-                _("Fulfilling the request for %(blueprint)s has failed.")
-                % {"blueprint": user_request.blueprint.eve_type.name}
-            ),
+            _("Fulfilling the request for %(blueprint)s has failed.")
+            % {"blueprint": user_request.blueprint.eve_type.name},
         )
     return redirect("blueprints:index")
 
@@ -458,18 +440,14 @@ def mark_request_in_progress(request: HttpRequest, request_id: int):
         user_request.notify_request_in_progress()
         messages.info(
             request,
-            format_html(
-                _("The request for %(blueprint)s has been marked as in progress.")
-                % {"blueprint": user_request.blueprint.eve_type.name}
-            ),
+            _("The request for %(blueprint)s has been marked as in progress.")
+            % {"blueprint": user_request.blueprint.eve_type.name},
         )
     else:
         messages.error(
             request,
-            format_html(
-                _("Marking the request for %(blueprint)s as in progress has failed.")
-                % {"blueprint": user_request.blueprint.eve_type.name}
-            ),
+            _("Marking the request for %(blueprint)s as in progress has failed.")
+            % {"blueprint": user_request.blueprint.eve_type.name},
         )
     return redirect("blueprints:index")
 
@@ -487,18 +465,14 @@ def mark_request_open(request: HttpRequest, request_id: int):
         user_request.notify_request_reopened(request.user)
         messages.info(
             request,
-            format_html(
-                _("The request for %(blueprint)s has been re-opened.")
-                % {"blueprint": user_request.blueprint.eve_type.name}
-            ),
+            _("The request for %(blueprint)s has been re-opened.")
+            % {"blueprint": user_request.blueprint.eve_type.name},
         )
     else:
         messages.error(
             request,
-            format_html(
-                _("Re-opening the request for %(blueprint)s has failed.")
-                % {"blueprint": user_request.blueprint.eve_type.name}
-            ),
+            _("Re-opening the request for %(blueprint)s has failed.")
+            % {"blueprint": user_request.blueprint.eve_type.name},
         )
     return redirect("blueprints:index")
 
@@ -522,18 +496,14 @@ def mark_request_cancelled(request: HttpRequest, request_id: int):
             user_request.notify_request_canceled_by_approver(request.user)
         messages.info(
             request,
-            format_html(
-                _("The request for %(blueprint)s has been closed as cancelled.")
-                % {"blueprint": user_request.blueprint.eve_type.name}
-            ),
+            _("The request for %(blueprint)s has been closed as cancelled.")
+            % {"blueprint": user_request.blueprint.eve_type.name},
         )
     else:
         messages.error(
             request,
-            format_html(
-                _("Cancelling the request for %(blueprint)s has failed.")
-                % {"blueprint": user_request.blueprint.eve_type.name}
-            ),
+            _("Cancelling the request for %(blueprint)s has failed.")
+            % {"blueprint": user_request.blueprint.eve_type.name},
         )
     return redirect("blueprints:index")
 
@@ -562,14 +532,10 @@ def remove_owner(request: HttpRequest, owner_id: int):
     if completed:
         messages.info(
             request,
-            format_html(
-                _("%(owner)s has been removed as a blueprint owner.")
-                % {"owner": owner_name}
-            ),
+            _("%(owner)s has been removed as a blueprint owner.")
+            % {"owner": owner_name},
         )
     else:
-        messages.error(
-            request,
-            format_html(_("Removing the blueprint owner has failed.")),
-        )
+        messages.error(request, _("Removing the blueprint owner has failed."))
+
     return redirect("blueprints:index")
