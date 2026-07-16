@@ -181,13 +181,16 @@ class Owner(models.Model):
             quantity = blueprint["quantity"]
             if quantity < 0:
                 quantity = 1
-            original = self.blueprints.filter(item_id=blueprint["item_id"]).first()
 
             location_flag = Blueprint.LocationFlag.from_esi_data(
                 blueprint["location_flag"]
             )
             eve_type, _ = EveType.objects.get_or_create_esi(id=blueprint["type_id"])
-            if original is not None:
+
+            original: Blueprint = self.blueprints.filter(
+                item_id=blueprint["item_id"]
+            ).first()
+            if original:
                 original.location = get_or_create_location_async(
                     blueprint["location_id"],
                     token=token,
