@@ -16,6 +16,7 @@ from blueprints.tests.helpers import TestCaseWithClearCache, extract
 from blueprints.tests.testdata.factory import (
     BlueprintFactory,
     FrigateBlueprintTypeFactory,
+    IndustryJobFactory,
     LocationItemFactory,
     LocationStationFactory,
     OwnerCharacterFactory,
@@ -270,7 +271,7 @@ class TestOwner_UpdateBlueprintsESI(TestCaseWithClearCache):
     def test_should_remove_stale_blueprints(self):
         # given
         owner = OwnerCharacterFactory()
-        BlueprintFactory(owner=owner)
+        BlueprintFactory(owner=owner)  # stale
         item_id = 1_008_000_000_001
         pook.get(
             make_esi_url(
@@ -408,6 +409,49 @@ class TestOwner_UpdateIndustryJobsEsi(TestCaseWithClearCache):
         self.assertEqual(obj.start_date, start_date)
         self.assertEqual(obj.end_date, end_date)
         self.assertEqual(obj.status, status)
+
+    @pook.on
+    def test_should_delete_stale_jobs(self):
+        # given
+        owner = OwnerCharacterFactory()
+        IndustryJobFactory(owner=owner)  # stale
+        job_id = 42
+        bp = BlueprintFactory(owner=owner)
+        end_date = now() + dt.timedelta(hours=3)
+        installer = EveCharacterFactory()
+        location = LocationStationFactory()
+        start_date = now()
+        duration = int((end_date - start_date).total_seconds())
+        pook.get(
+            make_esi_url(
+                f"characters/{owner.eve_character_strict.character_id}/industry/jobs"
+            ),
+            reply=HTTPStatus.OK,
+            response_json=[
+                {
+                    "activity_id": 1,
+                    "blueprint_id": bp.item_id,
+                    "blueprint_location_id": bp.location.id,
+                    "blueprint_type_id": bp.eve_type.id,
+                    "duration": duration,
+                    "end_date": end_date.isoformat(),
+                    "facility_id": location.id,
+                    "installer_id": installer.character_id,
+                    "job_id": job_id,
+                    "output_location_id": location.id,
+                    "runs": 100,
+                    "start_date": start_date.isoformat(),
+                    "station_id": location.id,
+                    "status": "active",
+                }
+            ],
+        )
+
+        # when
+        owner.update_industry_jobs_esi()
+
+        # then
+        self.assertSetEqual(extract(owner.jobs, "id"), {42})
 
 
 class TestOwner_ValidToken(NoSocketsTestCase):
