@@ -157,9 +157,6 @@ class Owner(models.Model):
     def update_blueprints_esi(self):
         """Update all blueprints from ESI."""
 
-        blueprint_ids_to_remove = list(
-            self.blueprints.values_list("item_id", flat=True)
-        )
         if self.corporation:
             token = self.valid_token(
                 [
@@ -191,8 +188,6 @@ class Owner(models.Model):
             )
             eve_type, _ = EveType.objects.get_or_create_esi(id=blueprint["type_id"])
             if original is not None:
-                # We've seen this blueprint coming from ESI, so we know it shouldn't be deleted
-                blueprint_ids_to_remove.remove(original.item_id)
                 original.location = get_or_create_location_async(
                     blueprint["location_id"],
                     token=token,
@@ -218,7 +213,12 @@ class Owner(models.Model):
                     quantity=quantity,
                 )
 
-        Blueprint.objects.filter(pk__in=blueprint_ids_to_remove).delete()
+        # delete stale blueprints
+        incoming_blueprints = {obj["item_id"] for obj in blueprints}
+        current_blueprints = set(self.blueprints.values_list("item_id", flat=True))
+        stale_blueprints = current_blueprints - incoming_blueprints
+        if stale_blueprints:
+            self.blueprints.filter(item_id__in=stale_blueprints).delete()
 
     def update_industry_jobs_esi(self):
         """Update all blueprints from ESI."""
@@ -226,9 +226,6 @@ class Owner(models.Model):
         if not self.is_active:
             return
 
-        job_ids_to_remove = list(
-            IndustryJob.objects.filter(owner=self).values_list("id", flat=True)
-        )
         if self.corporation:
             token = self.valid_token(
                 [
@@ -251,8 +248,6 @@ class Owner(models.Model):
             blueprint = Blueprint.objects.filter(pk=job["blueprint_id"]).first()
             if blueprint is not None:
                 if original is not None:
-                    # We've seen this job coming from ESI, so we know it shouldn't be deleted
-                    job_ids_to_remove.remove(original.id)
                     original.status = job["status"]
                     original.save()
                 else:
@@ -284,7 +279,12 @@ class Owner(models.Model):
                 blueprint_id = job["blueprint_id"]
                 logger.warning("%s: Unmatchable blueprint ID: %d", self, blueprint_id)
 
-        IndustryJob.objects.filter(pk__in=job_ids_to_remove).delete()
+        # delete stale jobs
+        incoming_jobs = {obj["job_id"] for obj in jobs}
+        current_jobs = set(self.jobs.values_list("id", flat=True))
+        stale_jobs = current_jobs - incoming_jobs
+        if stale_jobs:
+            self.jobs.filter(id__in=stale_jobs).delete()
 
     def _fetch_corporate_assets(self, token: Token) -> List[dict]:
         objs = esi.client.Assets.GetCorporationsCorporationIdAssets(

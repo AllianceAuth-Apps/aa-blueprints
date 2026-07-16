@@ -1,6 +1,7 @@
 from app_utils.testing import NoSocketsTestCase
 
 from blueprints.tests.testdata.factory import (
+    IndustryJobFactory,
     OwnerCharacterFactory,
     OwnerCorporationFactory,
     UserMainDefaultFactory,
@@ -24,3 +25,9 @@ class TestOwnerFactory(NoSocketsTestCase):
         x = OwnerCorporationFactory(user=u)
         self.assertTrue(x.character)
         self.assertEqual(x.corporation, u.profile.main_character.corporation)
+
+
+class TestIndustryJobFactory(NoSocketsTestCase):
+    def test_can_create(self):
+        x = IndustryJobFactory()
+        self.assertTrue(x.owner)
