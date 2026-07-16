@@ -178,43 +178,31 @@ class Owner(models.Model):
             runs = blueprint["runs"]
             if runs < 1:
                 runs = None
+
             quantity = blueprint["quantity"]
             if quantity < 0:
                 quantity = 1
 
+            eve_type, _ = EveType.objects.get_or_create_esi(id=blueprint["type_id"])
             location_flag = Blueprint.LocationFlag.from_esi_data(
                 blueprint["location_flag"]
             )
-            eve_type, _ = EveType.objects.get_or_create_esi(id=blueprint["type_id"])
-
-            original: Blueprint = self.blueprints.filter(
-                item_id=blueprint["item_id"]
-            ).first()
-            if original:
-                original.location = get_or_create_location_async(
-                    blueprint["location_id"],
-                    token=token,
-                )
-                original.location_flag = location_flag
-                original.eve_type = eve_type
-                original.runs = runs
-                original.material_efficiency = blueprint["material_efficiency"]
-                original.time_efficiency = blueprint["time_efficiency"]
-                original.quantity = quantity
-                original.save()
-            else:
-                self.blueprints.create(
-                    location=get_or_create_location_async(
-                        blueprint["location_id"], token=token
-                    ),
-                    location_flag=location_flag,
-                    eve_type=eve_type,
-                    item_id=blueprint["item_id"],
-                    runs=runs,
-                    material_efficiency=blueprint["material_efficiency"],
-                    time_efficiency=blueprint["time_efficiency"],
-                    quantity=quantity,
-                )
+            location = get_or_create_location_async(
+                blueprint["location_id"], token=token
+            )
+            Blueprint.objects.update_or_create(
+                item_id=blueprint["item_id"],
+                defaults={
+                    "eve_type": eve_type,
+                    "location_flag": location_flag,
+                    "location": location,
+                    "material_efficiency": blueprint["material_efficiency"],
+                    "owner": self,  # blueprints may change ownership
+                    "quantity": quantity,
+                    "runs": runs,
+                    "time_efficiency": blueprint["time_efficiency"],
+                },
+            )
 
         # delete stale blueprints
         incoming_blueprints = {obj["item_id"] for obj in blueprints}

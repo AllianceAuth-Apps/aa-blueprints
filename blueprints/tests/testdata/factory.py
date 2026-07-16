@@ -136,7 +136,7 @@ class BlueprintFactory(
     eve_type = factory.SubFactory(FrigateBlueprintTypeFactory)
     item_id = factory.Sequence(lambda o: o + 1_009_000_000_000)
     location = factory.SubFactory(LocationStationFactory)
-    location_flag = "Hangar"
+    location_flag = Blueprint.LocationFlag.HANGAR
     material_efficiency = 10
     owner = factory.SubFactory(OwnerCharacterFactory)
     quantity = 1
