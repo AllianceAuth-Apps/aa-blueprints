@@ -181,13 +181,16 @@ class Owner(models.Model):
             quantity = blueprint["quantity"]
             if quantity < 0:
                 quantity = 1
-            original = self.blueprints.filter(item_id=blueprint["item_id"]).first()
 
             location_flag = Blueprint.LocationFlag.from_esi_data(
                 blueprint["location_flag"]
             )
             eve_type, _ = EveType.objects.get_or_create_esi(id=blueprint["type_id"])
-            if original is not None:
+
+            original: Blueprint = self.blueprints.filter(
+                item_id=blueprint["item_id"]
+            ).first()
+            if original:
                 original.location = get_or_create_location_async(
                     blueprint["location_id"],
                     token=token,
@@ -244,40 +247,50 @@ class Owner(models.Model):
             jobs = self._fetch_personal_industry_jobs(token)
 
         for job in jobs:
-            original = IndustryJob.objects.filter(owner=self, id=job["job_id"]).first()
-            blueprint = Blueprint.objects.filter(pk=job["blueprint_id"]).first()
-            if blueprint is not None:
-                if original is not None:
-                    original.status = job["status"]
-                    original.save()
-                else:
-                    # Reject personal listings of corporate jobs and visa-versa
-                    if blueprint.owner == self:
-                        installer = EveCharacter.objects.get_character_by_id(
-                            job["installer_id"]
-                        )
-                        if not installer:
-                            installer = EveCharacter.objects.create_character(
-                                job["installer_id"]
-                            )
-                        IndustryJob.objects.create(
-                            id=job["job_id"],
-                            activity=job["activity_id"],
-                            owner=self,
-                            location=get_or_create_location_async(
-                                job["output_location_id"],
-                                token=token,
-                            ),
-                            blueprint=Blueprint.objects.get(pk=job["blueprint_id"]),
-                            installer=installer,
-                            runs=job["runs"],
-                            start_date=job["start_date"],
-                            end_date=job["end_date"],
-                            status=job["status"],
-                        )
-            else:
+            blueprint: Blueprint = Blueprint.objects.filter(
+                item_id=job["blueprint_id"]
+            ).first()
+            if not blueprint:
                 blueprint_id = job["blueprint_id"]
                 logger.warning("%s: Unmatchable blueprint ID: %d", self, blueprint_id)
+                continue
+
+            original: IndustryJob = self.jobs.filter(id=job["job_id"]).first()
+            if original is not None:
+                original.status = job["status"]
+                original.save()
+                continue
+
+            if blueprint.owner != self:
+                # Reject personal listings of corporate jobs and visa-versa
+                continue
+
+            installer = EveCharacter.objects.get_character_by_id(job["installer_id"])
+            if not installer:
+                installer = EveCharacter.objects.create_character(job["installer_id"])
+
+            try:
+                stale_job = blueprint.industryjob
+                stale_job.delete()  # delete outdated job that may hold the blueprint
+                logger.info("%s: Deleted stale job", stale_job)
+            except IndustryJob.DoesNotExist:
+                pass
+
+            IndustryJob.objects.create(
+                id=job["job_id"],
+                activity=job["activity_id"],
+                owner=self,
+                location=get_or_create_location_async(
+                    job["output_location_id"],
+                    token=token,
+                ),
+                blueprint=blueprint,
+                installer=installer,
+                runs=job["runs"],
+                start_date=job["start_date"],
+                end_date=job["end_date"],
+                status=job["status"],
+            )
 
         # delete stale jobs
         incoming_jobs = {obj["job_id"] for obj in jobs}
