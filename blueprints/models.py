@@ -266,6 +266,13 @@ class Owner(models.Model):
             if not installer:
                 installer = EveCharacter.objects.create_character(job["installer_id"])
 
+            try:
+                stale_job = blueprint.industryjob
+                stale_job.delete()  # delete outdated job that may hold the blueprint
+                logger.info("%s: Deleted stale job", stale_job)
+            except IndustryJob.DoesNotExist:
+                pass
+
             IndustryJob.objects.create(
                 id=job["job_id"],
                 activity=job["activity_id"],
