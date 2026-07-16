@@ -12,7 +12,7 @@ from app_utils.testdata_factories import EveCharacterFactory
 from app_utils.testing import NoSocketsTestCase
 
 from blueprints.models import Blueprint, IndustryJob, Owner
-from blueprints.tests.helpers import TestCaseWithClearCache
+from blueprints.tests.helpers import TestCaseWithClearCache, extract
 from blueprints.tests.testdata.factory import (
     BlueprintFactory,
     FrigateBlueprintTypeFactory,
@@ -265,6 +265,38 @@ class TestOwner_UpdateBlueprintsESI(TestCaseWithClearCache):
         self.assertEqual(obj.quantity, quantity)
         self.assertEqual(obj.runs, runs)
         self.assertEqual(obj.time_efficiency, time_efficiency)
+
+    @pook.on
+    def test_should_remove_stale_blueprints(self):
+        # given
+        owner = OwnerCharacterFactory()
+        BlueprintFactory(owner=owner)
+        item_id = 1_008_000_000_001
+        pook.get(
+            make_esi_url(
+                f"characters/{owner.eve_character_strict.character_id}/blueprints"
+            ),
+            response_headers={"X-Pages": "1"},
+            reply=HTTPStatus.OK,
+            response_json=[
+                {
+                    "item_id": item_id,
+                    "location_flag": "Hangar",
+                    "location_id": LocationStationFactory().id,
+                    "material_efficiency": 0,
+                    "quantity": 3,
+                    "runs": 100,
+                    "time_efficiency": 0,
+                    "type_id": FrigateBlueprintTypeFactory().id,
+                },
+            ],
+        )
+
+        # when
+        owner.update_blueprints_esi()
+
+        # then
+        self.assertSetEqual(extract(owner.blueprints, "item_id"), {item_id})
 
 
 class TestOwner_UpdateIndustryJobsEsi(TestCaseWithClearCache):
