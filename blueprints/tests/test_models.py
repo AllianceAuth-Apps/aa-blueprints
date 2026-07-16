@@ -176,7 +176,7 @@ class TestOwner_UpdateLocationsESI(TestCaseWithClearCache):
 
 class TestOwner_UpdateBlueprintsESI(TestCaseWithClearCache):
     @pook.on
-    def test_update_for_corporation(self):
+    def test_should_create_new_for_corporation(self):
         # given
         owner = OwnerCorporationFactory()
         location = LocationStationFactory()
@@ -222,7 +222,7 @@ class TestOwner_UpdateBlueprintsESI(TestCaseWithClearCache):
         self.assertEqual(obj.time_efficiency, time_efficiency)
 
     @pook.on
-    def test_update_for_character(self):
+    def test_should_create_new_for_character(self):
         # given
         owner = OwnerCharacterFactory()
         location = LocationStationFactory()
@@ -266,6 +266,52 @@ class TestOwner_UpdateBlueprintsESI(TestCaseWithClearCache):
         self.assertEqual(obj.quantity, quantity)
         self.assertEqual(obj.runs, runs)
         self.assertEqual(obj.time_efficiency, time_efficiency)
+
+    @pook.on
+    def test_should_update_existing_blueprints(self):
+        # given
+        owner = OwnerCharacterFactory()
+        bp_1 = BlueprintFactory(owner=owner, runs=10)
+        quantity = 3
+        material_efficiency = 0
+        time_efficiency = 0
+        location_flag = Blueprint.LocationFlag.CARGO
+        runs = 100
+        location = LocationStationFactory()
+        pook.get(
+            make_esi_url(
+                f"characters/{owner.eve_character_strict.character_id}/blueprints"
+            ),
+            response_headers={"X-Pages": "1"},
+            reply=HTTPStatus.OK,
+            response_json=[
+                {
+                    "item_id": bp_1.item_id,
+                    "location_flag": location_flag,
+                    "location_id": location.id,
+                    "material_efficiency": material_efficiency,
+                    "quantity": quantity,
+                    "runs": runs,
+                    "time_efficiency": time_efficiency,
+                    "type_id": bp_1.eve_type.id,
+                }
+            ],
+        )
+
+        # when
+        owner.update_blueprints_esi()
+
+        # then
+        self.assertEqual(owner.blueprints.count(), 1)
+        bp_2: Blueprint = owner.blueprints.first()
+        self.assertEqual(bp_2.item_id, bp_1.item_id)
+        self.assertEqual(bp_2.eve_type, bp_1.eve_type)
+        self.assertEqual(bp_2.location_flag, location_flag)
+        self.assertEqual(bp_2.location, location)
+        self.assertEqual(bp_2.material_efficiency, material_efficiency)
+        self.assertEqual(bp_2.quantity, quantity)
+        self.assertEqual(bp_2.runs, runs)
+        self.assertEqual(bp_2.time_efficiency, time_efficiency)
 
     @pook.on
     def test_should_remove_stale_blueprints(self):

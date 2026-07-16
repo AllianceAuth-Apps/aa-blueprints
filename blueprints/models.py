@@ -196,7 +196,6 @@ class Owner(models.Model):
                     token=token,
                 )
                 original.location_flag = location_flag
-                original.eve_type = eve_type
                 original.runs = runs
                 original.material_efficiency = blueprint["material_efficiency"]
                 original.time_efficiency = blueprint["time_efficiency"]
