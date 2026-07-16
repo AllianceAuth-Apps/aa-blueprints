@@ -302,7 +302,7 @@ class TestOwner_UpdateBlueprintsESI(TestCaseWithClearCache):
 
 class TestOwner_UpdateIndustryJobsEsi(TestCaseWithClearCache):
     @pook.on
-    def test_should_update_for_corporation(self):
+    def test_should_create_new_for_corporations(self):
         # given
         owner = OwnerCorporationFactory()
         bp = BlueprintFactory(owner=owner)
@@ -346,18 +346,18 @@ class TestOwner_UpdateIndustryJobsEsi(TestCaseWithClearCache):
         # then
         self.assertEqual(owner.jobs.count(), 1)
         obj: IndustryJob = owner.jobs.first()
-        self.assertEqual(obj.id, job_id)
         self.assertEqual(obj.activity, IndustryJob.Activity.MANUFACTURING)
         self.assertEqual(obj.blueprint, bp)
-        self.assertEqual(obj.location, location)
+        self.assertEqual(obj.end_date, end_date)
+        self.assertEqual(obj.id, job_id)
         self.assertEqual(obj.installer, installer)
+        self.assertEqual(obj.location, location)
         self.assertEqual(obj.runs, runs)
         self.assertEqual(obj.start_date, start_date)
-        self.assertEqual(obj.end_date, end_date)
         self.assertEqual(obj.status, status)
 
     @pook.on
-    def test_should_update_for_character(self):
+    def test_should_create_new_for_characters(self):
         # given
         owner = OwnerCharacterFactory()
         bp = BlueprintFactory(owner=owner)
@@ -400,15 +400,62 @@ class TestOwner_UpdateIndustryJobsEsi(TestCaseWithClearCache):
         # then
         self.assertEqual(owner.jobs.count(), 1)
         obj: IndustryJob = owner.jobs.first()
-        self.assertEqual(obj.id, job_id)
         self.assertEqual(obj.activity, IndustryJob.Activity.MANUFACTURING)
         self.assertEqual(obj.blueprint, bp)
-        self.assertEqual(obj.location, location)
+        self.assertEqual(obj.end_date, end_date)
+        self.assertEqual(obj.id, job_id)
         self.assertEqual(obj.installer, installer)
+        self.assertEqual(obj.location, location)
         self.assertEqual(obj.runs, runs)
         self.assertEqual(obj.start_date, start_date)
-        self.assertEqual(obj.end_date, end_date)
         self.assertEqual(obj.status, status)
+
+    @pook.on
+    def test_should_update_existing_jobs(self):
+        # given
+        owner = OwnerCharacterFactory()
+        job = IndustryJobFactory(owner=owner)
+        status_2 = "delivered"
+        pook.get(
+            make_esi_url(
+                f"characters/{owner.eve_character_strict.character_id}/industry/jobs"
+            ),
+            reply=HTTPStatus.OK,
+            response_json=[
+                {
+                    "activity_id": 1,
+                    "blueprint_id": job.blueprint.item_id,
+                    "blueprint_location_id": job.blueprint.location.id,
+                    "blueprint_type_id": job.blueprint.eve_type.id,
+                    "duration": 1,  # not used
+                    "end_date": job.end_date.isoformat(),
+                    "facility_id": job.location.id,
+                    "installer_id": job.installer.character_id,
+                    "job_id": job.id,
+                    "output_location_id": job.location.id,
+                    "runs": job.runs,
+                    "start_date": job.start_date.isoformat(),
+                    "station_id": job.location.id,
+                    "status": status_2,
+                }
+            ],
+        )
+
+        # when
+        owner.update_industry_jobs_esi()
+
+        # then
+        self.assertEqual(owner.jobs.count(), 1)
+        obj: IndustryJob = owner.jobs.first()
+        self.assertEqual(obj.activity, IndustryJob.Activity.MANUFACTURING)
+        self.assertEqual(obj.blueprint, job.blueprint)
+        self.assertEqual(obj.end_date, job.end_date)
+        self.assertEqual(obj.id, job.id)
+        self.assertEqual(obj.installer, job.installer)
+        self.assertEqual(obj.location, job.location)
+        self.assertEqual(obj.runs, job.runs)
+        self.assertEqual(obj.start_date, job.start_date)
+        self.assertEqual(obj.status, status_2)
 
     @pook.on
     def test_should_delete_stale_jobs(self):
@@ -451,7 +498,133 @@ class TestOwner_UpdateIndustryJobsEsi(TestCaseWithClearCache):
         owner.update_industry_jobs_esi()
 
         # then
-        self.assertSetEqual(extract(owner.jobs, "id"), {42})
+        self.assertSetEqual(extract(owner.jobs, "id"), {job_id})
+
+    @pook.on
+    def test_should_skip_jobs_with_unknown_blueprints(self):
+        # given
+        owner = OwnerCharacterFactory()
+        installer = EveCharacterFactory()
+        location = LocationStationFactory()
+        job_id_1 = 42
+        job_id_2 = 43
+        bp_2 = BlueprintFactory(owner=owner, location=location)
+        end_date = now() + dt.timedelta(hours=3)
+        start_date = now()
+        duration = int((end_date - start_date).total_seconds())
+        pook.get(
+            make_esi_url(
+                f"characters/{owner.eve_character_strict.character_id}/industry/jobs"
+            ),
+            reply=HTTPStatus.OK,
+            response_json=[
+                {
+                    "activity_id": 1,
+                    "blueprint_id": 666,
+                    "blueprint_location_id": location.id,
+                    "blueprint_type_id": FrigateBlueprintTypeFactory().id,
+                    "duration": duration,
+                    "end_date": end_date.isoformat(),
+                    "facility_id": location.id,
+                    "installer_id": installer.character_id,
+                    "job_id": job_id_1,
+                    "output_location_id": location.id,
+                    "runs": 100,
+                    "start_date": start_date.isoformat(),
+                    "station_id": location.id,
+                    "status": "active",
+                },
+                {
+                    "activity_id": 1,
+                    "blueprint_id": bp_2.item_id,
+                    "blueprint_location_id": bp_2.location.id,
+                    "blueprint_type_id": bp_2.eve_type.id,
+                    "duration": duration,
+                    "end_date": end_date.isoformat(),
+                    "facility_id": location.id,
+                    "installer_id": installer.character_id,
+                    "job_id": job_id_2,
+                    "output_location_id": location.id,
+                    "runs": 100,
+                    "start_date": start_date.isoformat(),
+                    "station_id": location.id,
+                    "status": "active",
+                },
+            ],
+        )
+
+        # when
+        owner.update_industry_jobs_esi()
+
+        # then
+        self.assertSetEqual(extract(owner.jobs, "id"), {job_id_2})
+
+    # @pook.on
+    # def test_should_reset_existing_blueprint_relation(self):
+    #     # given
+    #     owner = OwnerCharacterFactory()
+    #     installer = EveCharacterFactory()
+    #     location = LocationStationFactory()
+    #     job_id_1 = 42
+    #     bp_1 = BlueprintFactory(owner=owner, location=location)
+    #     job_id_2 = 43
+    #     IndustryJobFactory(
+    #         owner=owner,
+    #         id=job_id_2,
+    #         blueprint=bp_1,
+    #         installer=installer,
+    #         location=location,
+    #     )
+    #     bp_2 = BlueprintFactory(owner=owner, location=location)
+    #     end_date = now() + dt.timedelta(hours=3)
+    #     start_date = now()
+    #     duration = int((end_date - start_date).total_seconds())
+    #     pook.get(
+    #         make_esi_url(
+    #             f"characters/{owner.eve_character_strict.character_id}/industry/jobs"
+    #         ),
+    #         reply=HTTPStatus.OK,
+    #         response_json=[
+    #             {
+    #                 "activity_id": 1,
+    #                 "blueprint_id": bp_1.item_id,
+    #                 "blueprint_location_id": bp_1.location.id,
+    #                 "blueprint_type_id": bp_1.eve_type.id,
+    #                 "duration": duration,
+    #                 "end_date": end_date.isoformat(),
+    #                 "facility_id": location.id,
+    #                 "installer_id": installer.character_id,
+    #                 "job_id": job_id_1,
+    #                 "output_location_id": location.id,
+    #                 "runs": 100,
+    #                 "start_date": start_date.isoformat(),
+    #                 "station_id": location.id,
+    #                 "status": "active",
+    #             },
+    #             {
+    #                 "activity_id": 1,
+    #                 "blueprint_id": bp_2.item_id,
+    #                 "blueprint_location_id": bp_2.location.id,
+    #                 "blueprint_type_id": bp_2.eve_type.id,
+    #                 "duration": duration,
+    #                 "end_date": end_date.isoformat(),
+    #                 "facility_id": location.id,
+    #                 "installer_id": installer.character_id,
+    #                 "job_id": job_id_2,
+    #                 "output_location_id": location.id,
+    #                 "runs": 100,
+    #                 "start_date": start_date.isoformat(),
+    #                 "station_id": location.id,
+    #                 "status": "active",
+    #             },
+    #         ],
+    #     )
+
+    #     # when
+    #     owner.update_industry_jobs_esi()
+
+    #     # then
+    #     self.assertSetEqual(extract(owner.jobs, "id"), {job_id_1, job_id_2})
 
 
 class TestOwner_ValidToken(NoSocketsTestCase):

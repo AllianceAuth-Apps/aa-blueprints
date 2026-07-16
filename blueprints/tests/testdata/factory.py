@@ -153,7 +153,9 @@ class IndustryJobFactory(
     id = factory.Sequence(lambda o: o + 1_099_000_000_000)
     activity = IndustryJob.Activity.MANUFACTURING
     location = factory.SubFactory(LocationStationFactory)
-    blueprint = factory.LazyAttribute(lambda o: BlueprintFactory(location=o.location))
+    blueprint = factory.LazyAttribute(
+        lambda o: BlueprintFactory(location=o.location, owner=o.owner)
+    )
     installer = factory.SubFactory(EveCharacterFactory)
     owner = factory.SubFactory(OwnerCharacterFactory)
     start_date = factory.fuzzy.FuzzyDateTime(start_dt=now() - dt.timedelta(days=3))

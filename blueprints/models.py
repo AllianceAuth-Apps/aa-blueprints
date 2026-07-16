@@ -244,40 +244,43 @@ class Owner(models.Model):
             jobs = self._fetch_personal_industry_jobs(token)
 
         for job in jobs:
-            original = IndustryJob.objects.filter(owner=self, id=job["job_id"]).first()
-            blueprint = Blueprint.objects.filter(pk=job["blueprint_id"]).first()
-            if blueprint is not None:
-                if original is not None:
-                    original.status = job["status"]
-                    original.save()
-                else:
-                    # Reject personal listings of corporate jobs and visa-versa
-                    if blueprint.owner == self:
-                        installer = EveCharacter.objects.get_character_by_id(
-                            job["installer_id"]
-                        )
-                        if not installer:
-                            installer = EveCharacter.objects.create_character(
-                                job["installer_id"]
-                            )
-                        IndustryJob.objects.create(
-                            id=job["job_id"],
-                            activity=job["activity_id"],
-                            owner=self,
-                            location=get_or_create_location_async(
-                                job["output_location_id"],
-                                token=token,
-                            ),
-                            blueprint=Blueprint.objects.get(pk=job["blueprint_id"]),
-                            installer=installer,
-                            runs=job["runs"],
-                            start_date=job["start_date"],
-                            end_date=job["end_date"],
-                            status=job["status"],
-                        )
-            else:
+            blueprint: Blueprint = Blueprint.objects.filter(
+                item_id=job["blueprint_id"]
+            ).first()
+            if not blueprint:
                 blueprint_id = job["blueprint_id"]
                 logger.warning("%s: Unmatchable blueprint ID: %d", self, blueprint_id)
+                continue
+
+            original: IndustryJob = self.jobs.filter(id=job["job_id"]).first()
+            if original is not None:
+                original.status = job["status"]
+                original.save()
+                continue
+
+            if blueprint.owner != self:
+                # Reject personal listings of corporate jobs and visa-versa
+                continue
+
+            installer = EveCharacter.objects.get_character_by_id(job["installer_id"])
+            if not installer:
+                installer = EveCharacter.objects.create_character(job["installer_id"])
+
+            IndustryJob.objects.create(
+                id=job["job_id"],
+                activity=job["activity_id"],
+                owner=self,
+                location=get_or_create_location_async(
+                    job["output_location_id"],
+                    token=token,
+                ),
+                blueprint=blueprint,
+                installer=installer,
+                runs=job["runs"],
+                start_date=job["start_date"],
+                end_date=job["end_date"],
+                status=job["status"],
+            )
 
         # delete stale jobs
         incoming_jobs = {obj["job_id"] for obj in jobs}
