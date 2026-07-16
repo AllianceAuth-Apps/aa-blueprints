@@ -60,7 +60,9 @@ AA Blueprints needs the app [django-eveuniverse](https://gitlab.com/ErikKalkoken
 
 Make sure you are in the virtual environment (venv) of your Alliance Auth installation. Then install the newest release from PyPI:
 
-`pip install aa-blueprints`
+```sh
+pip install aa-blueprints
+```
 
 #### Step 2 - Configure AA
 
@@ -86,7 +88,7 @@ CELERYBEAT_SCHEDULE['blueprints_update_all_locations'] = {
 
 Run migrations & copy static files:
 
-```bash
+```sh
 python manage.py migrate
 python manage.py collectstatic
 ```
